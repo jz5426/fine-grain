@@ -26,11 +26,13 @@ class RexErrDataset(Dataset):
         self.rexerr_path = rexerr_path
         self.mimic_cxr_jpg_path = mimic_cxr_jpg_path
         self.data = self.intersec_rexerr_mimicCxrJpg(self.rexerr_path, self.mimic_cxr_jpg_path)
+        
         self.transform = transforms.Compose([
             transforms.ToTensor(),  # Converts [0,255] PIL image to [0,1] tensor of shape [C, H, W]
             transforms.Resize((resize, resize)),  # Uncomment if you need to resize
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Common ImageNet normalization
         ])
+        
         self.study_level_sampling = study_level_sampling
         
     def __len__(self):
@@ -106,4 +108,3 @@ if __name__ == '__main__':
     # mimic-cxr-jpg path
     mimicCxrJpg = '/cluster/projects/mcintoshgroup/publicData/MIMIC-CXR/MIMIC-CXR-JPG'
 
-    # intersec_rexerr_mimicCxrJpg(rexerr, mimicCxrJpg)
