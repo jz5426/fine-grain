@@ -22,16 +22,12 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
 class RexErrDataset(Dataset):
-    def __init__(self, rexerr_path, mimic_cxr_jpg_path, resize=224, study_level_sampling=True):
+    def __init__(self, rexerr_path, mimic_cxr_jpg_path, transform, study_level_sampling=True):
         self.rexerr_path = rexerr_path
         self.mimic_cxr_jpg_path = mimic_cxr_jpg_path
         self.data = self.intersec_rexerr_mimicCxrJpg(self.rexerr_path, self.mimic_cxr_jpg_path)
         
-        self.transform = transforms.Compose([
-            transforms.ToTensor(),  # Converts [0,255] PIL image to [0,1] tensor of shape [C, H, W]
-            transforms.Resize((resize, resize)),  # Uncomment if you need to resize
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Common ImageNet normalization
-        ])
+        self.transform = transform
         
         self.study_level_sampling = study_level_sampling
         
