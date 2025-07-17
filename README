@@ -1,1 +1,6 @@
 test
+
+MIMIC-CXR-JPG: /cluster/projects/mcintoshgroup/publicData/MIMIC-CXR/MIMIC-CXR-JPG
+
+metadata for the rexerr and mimiccxr
+/cluster/projects/mcintoshgroup/publicData/rexerr-v1
