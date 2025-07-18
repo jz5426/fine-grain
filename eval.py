@@ -44,21 +44,25 @@ def get_dataset(level, split, study_level_sampling, transform, cached_file_path)
 # -------------------------
 # Cache image and text embeddings
 # -------------------------
-def encode_dataset(dataloader):
+def encode_dataset(dataloader, models):
+    image_encoder = models['image_encoder']
+    text_encoder = models['text_encoder']
+    tokenizer = models['tokenizer']
+    image_projector = models['image_projector']
 
     results = []
     with torch.no_grad():
         for batch in tqdm(dataloader):
             # check preprocess_data.py
-            tensor_images = [img.to(device) for img in batch['tensor_images'][0]]
+            tensor_images = batch['tensor_images'][0]
             origin_text = batch['original_text']    # assume this is the input text
             err_text = batch['error_text']
             study_id = batch['study_id'] # key of the results
 
-            # Encode images
-            img_feats = torch.stack([image_encoder(img.unsqueeze(0)).squeeze(0) for img in tensor_images])
-
-            # TODO: requires both model to project to a common size.
+            # Encode and project the image featuress
+            tensor_images = tensor_images.to(device)
+            img_feats = image_encoder(tensor_images)  # shape: [N, D]
+            img_feats = image_projector(img_feats)    # apply projector: shape: [N, D']
 
             # Encode original text
             inputs = tokenizer(origin_text, return_tensors="pt", padding=True, truncation=True).to(device)
@@ -126,11 +130,13 @@ if __name__ == '__main__':
         '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder'
         )
     image_encoder = cxrclip.image_encoder
+    image_projector = cxrclip.image_projection
     text_encoder = cxrclip.text_encoder
     tokenizer = cxrclip.tokenizer
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     image_encoder.to(device)
+    image_projector.to(device)
     text_encoder.to(device)
     image_encoder.eval()
     text_encoder.eval()
@@ -150,14 +156,21 @@ if __name__ == '__main__':
     val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False)
 
+    models = {
+        'image_encoder': image_encoder,
+        'text_encoder': text_encoder,
+        'tokenizer': tokenizer,
+        'image_projector': image_projector
+    }
+
     print("Encoding train set...")
-    train_img, train_txt, train_lbl = encode_dataset(train_loader)
+    train_img, train_txt, train_lbl = encode_dataset(train_loader, models)
 
     print("Encoding val set...")
-    val_img, val_txt, val_lbl = encode_dataset(val_loader)
+    val_img, val_txt, val_lbl = encode_dataset(val_loader, models)
 
     print("Encoding test set...")
-    test_img, test_txt, test_lbl = encode_dataset(test_loader)
+    test_img, test_txt, test_lbl = encode_dataset(test_loader, models)
 
     # -------------------------
     # Define classifier

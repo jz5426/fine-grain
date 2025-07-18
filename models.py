@@ -17,12 +17,15 @@ class vlm_model():
         self.text_encoder = text_encoder
         self.tokenizer = tokenizer
         self.image_projection = image_projection_head
+
         # freeze the model weights to prevent training
         self.freeze_weights(self.image_encoder)
+        self.freeze_weights(self.image_projection)
         self.freeze_weights(self.text_encoder)
+        #TODO: text projection?
 
     def freeze_weights(self, model):
-        assert model == self.image_encoder or model == self.text_encoder or model == self.tokenizer
+        assert model == self.image_encoder or model == self.text_encoder or model == self.tokenizer or model == self.image_projection
         for param in model.parameters():
             param.requires_grad = False
 
@@ -55,9 +58,11 @@ class cxrclip_model(vlm_model):
         for key in saved_state_dict.keys():
             if 'image_encoder.' in key:
                 image_encoder_state_dict[key.replace("image_encoder.", "", 1)] = saved_state_dict[key]
-            if 'image_projection.' in key:
+            elif 'image_projection.' in key:
                 image_projection_state_dict[key.replace("image_projection.", "", 1)] = saved_state_dict[key]
-
+            else:
+                #TODO: load text encoder stuffs somewhere
+                print('hi')
         # NOTE: this sanity check if the model weights are loaded properly
 
         # image encoder
@@ -76,7 +81,7 @@ class cxrclip_model(vlm_model):
 
         print(f'    finished loading the weights the weights from {cxr_path}')
 
-        return image_encoder
+        return image_encoder, image_projection_head
 
 class medclip(vlm_model):
     pass
