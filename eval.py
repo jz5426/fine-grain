@@ -49,6 +49,7 @@ def encode_dataset(dataloader, models):
     text_encoder = models['text_encoder']
     tokenizer = models['tokenizer']
     image_projector = models['image_projector']
+    text_projector = models['text_projector']
 
     results = []
     with torch.no_grad():
@@ -66,15 +67,15 @@ def encode_dataset(dataloader, models):
 
             # Encode original text
             inputs = tokenizer(origin_text, return_tensors="pt", padding=True, truncation=True).to(device)
-            origin_txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token # TODO: check this computation with the CXRCLIP
-
-            # TODO: projection
+            origin_txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token
+            origin_txt_feats = text_projector(origin_txt_feats)
 
             # Encoder error text
             inputs = tokenizer(err_text, return_tensors="pt", padding=True, truncation=True).to(device)
             err_txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token
+            err_txt_feats = text_projector(err_txt_feats)
 
-            # TODO: projection
+            assert img_feats.shape == origin_txt_feats.shape and origin_txt_feats.shape == err_txt_feats.shape
 
             results.append({
                 'study_id': study_id,
@@ -136,21 +137,26 @@ if __name__ == '__main__':
     image_encoder = cxrclip.image_encoder
     image_projector = cxrclip.image_projection
     text_encoder = cxrclip.text_encoder
+    text_projector = cxrclip.text_projection
     tokenizer = cxrclip.tokenizer
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     image_encoder.to(device)
     image_projector.to(device)
     text_encoder.to(device)
+    text_projector.to(device)
+
     image_encoder.eval()
+    image_projector.eval()
     text_encoder.eval()
+    text_projector.eval()
 
     # load dataset
     transform = Compose([
         Resize((224, 224)),
         ToTensor(),
         Normalize(mean=[0.485, 0.456, 0.406],
-                  std=[0.229, 0.224, 0.225])
+                  std=[0.229, 0.224, 0.225]) # TODO: check with CXR-CLIP
     ])
     train_dataset = get_dataset('report', 'train', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/rexerr_train.pkl')
     val_dataset = get_dataset('report', 'val', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/rexerr_val.pkl')
@@ -164,7 +170,8 @@ if __name__ == '__main__':
         'image_encoder': image_encoder,
         'text_encoder': text_encoder,
         'tokenizer': tokenizer,
-        'image_projector': image_projector
+        'image_projector': image_projector,
+        'text_projector': text_projector
     }
 
     print("Encoding train set...")
