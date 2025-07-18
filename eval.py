@@ -11,7 +11,7 @@ from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 from tqdm import tqdm
 import numpy as np
 
-from models import cxrclip_model
+from models import cxrclip_model, LinearProjectionHead
 from preprocess_data import RexErrDataset
 
 import os
@@ -156,7 +156,7 @@ if __name__ == '__main__':
         Resize((224, 224)),
         ToTensor(),
         Normalize(mean=[0.485, 0.456, 0.406],
-                  std=[0.229, 0.224, 0.225]) # TODO: check with CXR-CLIP
+                  std=[0.229, 0.224, 0.225])
     ])
     train_dataset = get_dataset('report', 'train', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/rexerr_train.pkl')
     val_dataset = get_dataset('report', 'val', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/rexerr_val.pkl')
@@ -187,12 +187,12 @@ if __name__ == '__main__':
     # Define classifier
     # -------------------------
     input_dim = train_img.shape[1] + train_txt.shape[1] # TODO: concatenation or subtraction or addition
-    classifier = nn.Sequential(
-        nn.Linear(input_dim, 1)
-    ).to(device)
+    classifier = LinearProjectionHead(input_dim, 1).to(device)
 
     criterion = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(classifier.parameters(), lr=1e-4)
+
+    # TODO: define as few-shot classification
 
     print("Training classifier...")
     train_feats = torch.cat([train_img, train_txt], dim=1)

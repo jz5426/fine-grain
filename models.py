@@ -23,7 +23,7 @@ class vlm_model():
         self.freeze_weights(self.image_encoder)
         self.freeze_weights(self.image_projection)
         self.freeze_weights(self.text_encoder)
-        #TODO: text projection?
+        self.freeze_weights(self.text_projection)
 
     def freeze_weights(self, model):
         assert model == self.image_encoder or model == self.text_encoder or model == self.tokenizer or model == self.image_projection
