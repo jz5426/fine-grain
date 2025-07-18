@@ -66,11 +66,15 @@ def encode_dataset(dataloader, models):
 
             # Encode original text
             inputs = tokenizer(origin_text, return_tensors="pt", padding=True, truncation=True).to(device)
-            origin_txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token
+            origin_txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token # TODO: check this computation with the CXRCLIP
+
+            # TODO: projection
 
             # Encoder error text
             inputs = tokenizer(err_text, return_tensors="pt", padding=True, truncation=True).to(device)
             err_txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token
+
+            # TODO: projection
 
             results.append({
                 'study_id': study_id,

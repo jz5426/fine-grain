@@ -12,11 +12,12 @@ import os
 import warnings
 
 class vlm_model():
-    def __init__(self, image_encoder, image_projection_head, text_encoder, tokenizer):
+    def __init__(self, image_encoder, image_projection_head, text_encoder, text_projection_head, tokenizer):
         self.image_encoder = image_encoder
         self.text_encoder = text_encoder
         self.tokenizer = tokenizer
         self.image_projection = image_projection_head
+        self.text_projection = text_projection_head
 
         # freeze the model weights to prevent training
         self.freeze_weights(self.image_encoder)
@@ -31,38 +32,46 @@ class vlm_model():
 
 class cxrclip_model(vlm_model):
     def __init__(self, image_encoder_path, text_encoder_path, tokenizer_path):
-        # TODO: follow the ct-clip to load the image encoder with pretrained weights
-        if 'swin' in image_encoder_path:
-            image_encoder = SwinModel.from_pretrained(image_encoder_path)
-            # TODO:
-        else:
-            image_encoder, image_projection_head = self.load_resnet_encoder(image_encoder_path)
 
+        image_encoder, image_projection_head, text_encoder, text_projection_head = self.load_cxrclip_encoder(image_encoder_path, text_encoder_path)
         text_encoder = AutoModel.from_pretrained(text_encoder_path)
         tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-        super().__init__(image_encoder, image_projection_head, text_encoder, tokenizer)
 
-    def load_resnet_encoder(self, cxr_path):
+        super().__init__(image_encoder, image_projection_head, text_encoder, text_projection_head, tokenizer)
+
+    def load_cxrclip_encoder(self, image_encoder_path, text_encoder_path):
         """handle only loading the cxr_clip based xray encoder and its (not ours) projection layer only -- need special handling of the dictionary keys like below"""
         warnings.filterwarnings('ignore')
-        image_encoder = ResNet50()
-        image_projection_head = LinearProjectionHead(2048, 512)
-        
-        ckpt = torch.load(cxr_path, map_location="cpu")
+        cxrclip_ckpt = torch.load(image_encoder_path, map_location="cpu")
 
-        # NOTE: the following only valid for swinT in the cxr_clip
-        # [key for key in ckpt["model"].keys() if 'image_encoder' in key] # NOTE this is the way to check the keys
-        saved_state_dict = ckpt["model"]
-        image_encoder_state_dict = {}
-        image_projection_state_dict = {}
+        # load image encoder
+        if 'swin' in image_encoder_path:
+            image_encoder = SwinModel.from_pretrained(image_encoder_path)
+            image_projection_head = None # TODO:
+        else:
+            image_encoder = ResNet50()
+            image_projection_head = LinearProjectionHead(2048, 512)
+            
+        # load text encoder
+        text_encoder = AutoModel.from_pretrained(text_encoder_path)
+        text_projection_head = LinearProjectionHead(768, 512)
+
+        saved_state_dict = cxrclip_ckpt["model"]
+        image_encoder_state_dict, image_projection_state_dict = {}, {}
+        text_encoder_state_dict, text_projection_state_dict = {}, {}
+        rest = {}
         for key in saved_state_dict.keys():
             if 'image_encoder.' in key:
                 image_encoder_state_dict[key.replace("image_encoder.", "", 1)] = saved_state_dict[key]
             elif 'image_projection.' in key:
                 image_projection_state_dict[key.replace("image_projection.", "", 1)] = saved_state_dict[key]
+            elif 'text_encoder.' in key:
+                text_encoder_state_dict[key.replace("text_encoder.text_encoder.", "", 1)] = saved_state_dict[key]
+            elif 'text_projection.' in key:
+                text_projection_state_dict[key.replace("text_projection.", "", 1)] = saved_state_dict[key]
             else:
-                #TODO: load text encoder stuffs somewhere
-                print('hi')
+                rest[key] = saved_state_dict[key]
+        print('non loaded keys ', rest)
         # NOTE: this sanity check if the model weights are loaded properly
 
         # image encoder
@@ -72,16 +81,29 @@ class cxrclip_model(vlm_model):
         loaded_keys = ckpt_keys.intersection(model_keys) - set(missing_keys)
         assert (len(image_encoder.state_dict().keys())) == len(loaded_keys)
 
+        # text encoder
+        missing_keys, unexpected_keys = text_encoder.load_state_dict(text_encoder_state_dict, strict=False)
+        model_keys = set(text_encoder.state_dict().keys())
+        ckpt_keys = set(text_encoder_state_dict.keys())
+        loaded_keys = ckpt_keys.intersection(model_keys) - set(missing_keys)
+        assert (len(text_encoder.state_dict().keys())) == len(loaded_keys)
+
         # image projection head
         missing_keys, unexpected_keys = image_projection_head.load_state_dict(image_projection_state_dict, strict=False)
         model_keys = set(image_projection_head.state_dict().keys())
         ckpt_keys = set(image_projection_state_dict.keys())
         loaded_keys = ckpt_keys.intersection(model_keys) - set(missing_keys)
         assert (len(image_projection_head.state_dict().keys())) == len(loaded_keys)
+        
+        # text projection head
+        missing_keys, unexpected_keys = text_projection_head.load_state_dict(text_projection_state_dict, strict=False)
+        model_keys = set(text_projection_head.state_dict().keys())
+        ckpt_keys = set(text_projection_state_dict.keys())
+        loaded_keys = ckpt_keys.intersection(model_keys) - set(missing_keys)
+        assert (len(text_projection_head.state_dict().keys())) == len(loaded_keys)
 
-        print(f'    finished loading the weights the weights from {cxr_path}')
-
-        return image_encoder, image_projection_head
+        print(f'    finished loading the weights the weights from {image_encoder_path}')
+        return image_encoder, image_projection_head, text_encoder, text_projection_head
 
 class medclip(vlm_model):
     pass
