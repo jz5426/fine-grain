@@ -19,16 +19,13 @@ import csv
 import random
 from PIL import Image
 from torch.utils.data import Dataset
-import torchvision.transforms as transforms
 
 class RexErrDataset(Dataset):
     def __init__(self, rexerr_path, mimic_cxr_jpg_path, transform, study_level_sampling=True):
         self.rexerr_path = rexerr_path
         self.mimic_cxr_jpg_path = mimic_cxr_jpg_path
         self.data = self.intersec_rexerr_mimicCxrJpg(self.rexerr_path, self.mimic_cxr_jpg_path)
-        
         self.transform = transform
-        
         self.study_level_sampling = study_level_sampling
         
     def __len__(self):
@@ -90,9 +87,14 @@ class RexErrDataset(Dataset):
             tensor_image = self.transform(image)
             tensor_images.append(tensor_image)
 
-        data['sampled_image'] = image_paths
-        data['tensor_images'] = tensor_images
-        return data
+        results = {
+            'image_paths': image_paths,
+            'tensor_images': tensor_images,
+            'original_text': data['original_text'],
+            'error_text':  data['error_text'],
+            'study_id': data['study_id']
+        }
+        return results
 
 if __name__ == '__main__':
     SPLIT = 'test'

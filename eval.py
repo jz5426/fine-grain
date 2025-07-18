@@ -11,43 +11,71 @@ from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 from tqdm import tqdm
 import numpy as np
 
-from models import cxrclip
+from models import cxrclip_model
 from preprocess_data import RexErrDataset
 
+import os
+import pickle
 
-def get_dataset(level, split, study_level_sampling, transform):
-    return RexErrDataset(
+def get_dataset(level, split, study_level_sampling, transform, cached_file_path):
+
+    if os.path.exists(cached_file_path):
+        with open(cached_file_path, 'rb') as f:
+            dataset = pickle.load(f)
+        return dataset
+
+    dataset = RexErrDataset(
         f'/cluster/projects/mcintoshgroup/publicData/rexerr-v1/ReXErr-{level}-level/ReXErr-{level}-level_{split}.csv',
         '/cluster/projects/mcintoshgroup/publicData/MIMIC-CXR/MIMIC-CXR-JPG',
         study_level_sampling=study_level_sampling,
         transform=transform
     )
 
+    # Ensure the parent directories exist
+    os.makedirs(os.path.dirname(cached_file_path), exist_ok=True)
+    
+    # Save the object to the specified path
+    with open(cached_file_path, 'wb') as f:
+        pickle.dump(dataset, f)
+    
+    return dataset
+
+
 # -------------------------
 # Cache image and text embeddings
 # -------------------------
 def encode_dataset(dataloader):
-    all_img_embeddings = []
-    all_txt_embeddings = []
-    all_labels = []
 
+    results = []
     with torch.no_grad():
         for batch in tqdm(dataloader):
-            tensor_images = [img.to(device) for img in batch['tensor_images']]
-            labels = batch['label']  # assume your dataset returns this
-            texts = batch['text']    # assume this is the input text
+            # check preprocess_data.py
+            tensor_images = [img.to(device) for img in batch['tensor_images'][0]]
+            origin_text = batch['original_text']    # assume this is the input text
+            err_text = batch['error_text']
+            study_id = batch['study_id'] # key of the results
 
             # Encode images
             img_feats = torch.stack([image_encoder(img.unsqueeze(0)).squeeze(0) for img in tensor_images])
-            # Encode text
-            inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True).to(device)
-            txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token
 
-            all_img_embeddings.append(img_feats.cpu())
-            all_txt_embeddings.append(txt_feats.cpu())
-            all_labels.append(torch.tensor(labels))
+            # TODO: requires both model to project to a common size.
 
-    return torch.cat(all_img_embeddings), torch.cat(all_txt_embeddings), torch.cat(all_labels)
+            # Encode original text
+            inputs = tokenizer(origin_text, return_tensors="pt", padding=True, truncation=True).to(device)
+            origin_txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token
+
+            # Encoder error text
+            inputs = tokenizer(err_text, return_tensors="pt", padding=True, truncation=True).to(device)
+            err_txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token
+
+            results.append({
+                'study_id': study_id,
+                'origin_txt_feats': origin_txt_feats,
+                'error_txt_feats': err_txt_feats,
+                'image_feats': img_feats
+            })
+
+    return results
 
 
 # -------------------------
@@ -92,7 +120,11 @@ if __name__ == '__main__':
     #TODO: define the numbers as hyperparameters
     #TODO: revise the following code to suit our task.
 
-    cxrclip = cxrclip('image encoder weight path', 'text encoder weight path', 'tokenizer path, should be the same as the text encoder')
+    cxrclip = cxrclip_model(
+        '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Image-Encoder/r50_m.tar', 
+        '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/', 
+        '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder'
+        )
     image_encoder = cxrclip.image_encoder
     text_encoder = cxrclip.text_encoder
     tokenizer = cxrclip.tokenizer
@@ -110,9 +142,9 @@ if __name__ == '__main__':
         Normalize(mean=[0.485, 0.456, 0.406],
                   std=[0.229, 0.224, 0.225])
     ])
-    train_dataset = get_dataset('report', 'train', False, transform)
-    val_dataset = get_dataset('report', 'val', False, transform)
-    test_dataset = get_dataset('report', 'test', False, transform)
+    train_dataset = get_dataset('report', 'train', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/rexerr_train.pkl')
+    val_dataset = get_dataset('report', 'val', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/rexerr_val.pkl')
+    test_dataset = get_dataset('report', 'test', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/rexerr_test.pkl')
 
     train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False)
