@@ -18,6 +18,10 @@ from preprocess_data import RexErrDataset
 import os
 import pickle
 import random
+from types import SimpleNamespace
+import argparse
+import pandas as pd
+from datetime import datetime
 
 def l2norm(t):
     return F.normalize(t, dim = -1)
@@ -50,7 +54,12 @@ def get_dataset(level, split, study_level_sampling, transform, cached_file_path)
 # Cache image and text embeddings
 # -------------------------
 def encode_dataset(dataloader, models, pickle_dest):
-    # TODO: check if cache exists
+
+    if os.path.exists(pickle_dest):
+        with open(pickle_dest, 'rb') as f:
+            data = pickle.load(f)
+            ground_truth_pairs, err_pairs = data
+            return ground_truth_pairs, err_pairs
 
     image_encoder = models['image_encoder']
     text_encoder = models['text_encoder']
@@ -73,12 +82,12 @@ def encode_dataset(dataloader, models, pickle_dest):
             img_feats = image_projector(img_feats)    # apply projector: shape: [N, D']
 
             # Encode original text
-            inputs = tokenizer(origin_text, return_tensors="pt", padding=True, truncation=True).to(device)
+            inputs = tokenizer(origin_text, return_tensors="pt", padding=True, truncation=True, max_length=256).to(device) # TODO:
             origin_txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token
             origin_txt_feats = text_projector(origin_txt_feats)
 
             # Encoder error text
-            inputs = tokenizer(err_text, return_tensors="pt", padding=True, truncation=True).to(device)
+            inputs = tokenizer(err_text, return_tensors="pt", padding=True, truncation=True, max_length=256).to(device) # TODO:
             err_txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token
             err_txt_feats = text_projector(err_txt_feats)
 
@@ -89,22 +98,26 @@ def encode_dataset(dataloader, models, pickle_dest):
             origin_txt_feats = l2norm(origin_txt_feats)
             err_txt_feats = l2norm(err_txt_feats)
 
-            ground_truth_pairs.append({
-                'study_id': study_id,
-                'text_feats': origin_txt_feats,
-                'image_feats': img_feats,
-                'label': 1
-            })
+            # individual feature/study as a dictionary in the dict
+            for i, _id in enumerate(study_id):
+                ground_truth_pairs.append(SimpleNamespace(**{
+                    'study_id': _id,
+                    'text_feats': origin_txt_feats[i], # [512]
+                    'image_feats': img_feats[i], # [512]
+                    'label': 1
+                }))
 
-            err_pairs.append({
-                'study_id': study_id,
-                'text_feats': err_txt_feats,
-                'image_feats': img_feats,
-                'label': 0
-            })
+                err_pairs.append(SimpleNamespace(**{
+                    'study_id': _id,
+                    'text_feats': err_txt_feats[i],
+                    'image_feats': img_feats[i],
+                    'label': 0
+                }))
 
-    # TODO: save as pickle object.
-
+    # Ensure the parent directories exist
+    os.makedirs(os.path.dirname(pickle_dest), exist_ok=True)
+    with open(pickle_dest, 'wb') as f:
+        pickle.dump((ground_truth_pairs, err_pairs), f)
 
     return ground_truth_pairs, err_pairs
 
@@ -141,9 +154,6 @@ def train_classifier(train_x_tensor, train_y_tensor, val_x_tensor, val_y_tensor,
 
             total_loss += loss.item()
 
-        avg_train_loss = total_loss / len(train_loader)
-        print(f"Epoch {epoch} | Train Loss: {avg_train_loss:.4f} | Val Loss: {val_loss.item():.4f}")
-
         # Validation
         classifier.eval()
         with torch.no_grad():
@@ -154,6 +164,9 @@ def train_classifier(train_x_tensor, train_y_tensor, val_x_tensor, val_y_tensor,
 
                 val_logits = classifier(batch_x).squeeze()
                 val_loss += criterion(val_logits, batch_y)
+
+        avg_train_loss = total_loss / len(train_loader)
+        print(f"Epoch {epoch} | Train Loss: {avg_train_loss:.4f} | Val Loss: {val_loss.item():.4f}")
 
         if val_loss.item() < best_val_loss:
             best_val_loss = val_loss.item()
@@ -167,19 +180,46 @@ def train_classifier(train_x_tensor, train_y_tensor, val_x_tensor, val_y_tensor,
 
     classifier.load_state_dict(best_state)
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Training script with configurable parameters")
+
+    parser.add_argument("--few_shot", type=float, default=0.1, help="Few-shot learning ratio")
+    parser.add_argument("--fusion_type", type=str, default="concatenate", choices=["concatenate", "subtraction", "addition"], help="Type of fusion method")
+    parser.add_argument("--batch_size", type=int, default=512, help="Batch size for training")
+    parser.add_argument("--input_size", type=int, default=224, help="Input image size")
+    parser.add_argument("--learning_rate", type=float, default=1e-2, help="Learning rate")
+    parser.add_argument("--patience", type=int, default=5, help="Early stopping patience")
+    parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
+    parser.add_argument("--prediction_threshold", type=float, default=0.5, help="Threshold for binary classification")
+
+    return parser.parse_args()
 
 if __name__ == '__main__':
 
-    #TODO: define the numbers as hyperparameters
-    #TODO: revise the following code to suit our task.
+    args = parse_args()
+    FEW_SHOT = args.few_shot
+    FUSION_TYPE = args.fusion_type
+    BATCH_SIZE = args.batch_size
+    INPUT_SIZE = args.input_size
+    LEARNING_RATE = args.learning_rate
+    PATIENCE = args.patience
+    EPOCHS = args.epochs
+    PREDICTION_THRESHOLD = args.prediction_threshold
 
-    FEW_SHOT = 0.1
-    FUSION_TYPE = 'concatenate' # 'concatenate' 'subtraction' 'addition'text_projection_head
+    print("Script Parameters:")
+    print(f"  FEW_SHOT: {FEW_SHOT}")
+    print(f"  FUSION_TYPE: {FUSION_TYPE}")
+    print(f"  BATCH_SIZE: {BATCH_SIZE}")
+    print(f"  INPUT_SIZE: {INPUT_SIZE}")
+    print(f"  LEARNING_RATE: {LEARNING_RATE}")
+    print(f"  PATIENCE: {PATIENCE}")
+    print(f"  EPOCHS: {EPOCHS}")
+    print(f"  PREDICTION_THRESHOLD: {PREDICTION_THRESHOLD}")
 
     cxrclip = cxrclip_model(
         '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Image-Encoder/r50_m.tar', 
         '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/', 
-        '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder'
+        '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/'
         )
     image_encoder = cxrclip.image_encoder
     image_projector = cxrclip.image_projection
@@ -200,18 +240,18 @@ if __name__ == '__main__':
 
     # load dataset
     transform = Compose([
-        Resize((224, 224)),
+        Resize((INPUT_SIZE, INPUT_SIZE)),
         ToTensor(),
         Normalize(mean=[0.485, 0.456, 0.406],
                   std=[0.229, 0.224, 0.225])
     ])
-    train_dataset = get_dataset('report', 'train', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/rexerr_train.pkl')
-    val_dataset = get_dataset('report', 'val', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/rexerr_val.pkl')
-    test_dataset = get_dataset('report', 'test', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/rexerr_test.pkl')
+    train_dataset = get_dataset('report', 'train', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/rexerr_train.pkl')
+    val_dataset = get_dataset('report', 'val', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/rexerr_val.pkl')
+    test_dataset = get_dataset('report', 'test', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/rexerr_test.pkl')
 
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
     models = {
         'image_encoder': image_encoder,
@@ -222,19 +262,19 @@ if __name__ == '__main__':
     }
 
     print("Encoding train set...")
-    train_gt, train_err = encode_dataset(train_loader, models)
+    train_gt, train_err = encode_dataset(train_loader, models, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/train_features.pkl')
     
     print("Encoding val set...")
-    val_gt, val_err = encode_dataset(val_loader, models)
+    val_gt, val_err = encode_dataset(val_loader, models, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/val_features.pkl')
 
     print("Encoding test set...")
-    test_gt, test_err = encode_dataset(test_loader, models)
+    test_gt, test_err = encode_dataset(test_loader, models, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/test_features.pkl')
 
     # -------------------------
     # Few-shot sampling (by %) and combine the tensors
     # -------------------------
 
-    sample_size = int(len(train_gt) * FEW_SHOT)
+    sample_size = int((len(train_gt) * FEW_SHOT) // 2)
     sampled_indices = random.sample(range(len(train_gt)), sample_size)
 
     # sample the same set of indices from both train_tr and train_err for images and text
@@ -261,9 +301,9 @@ if __name__ == '__main__':
     train_gt_txt_tensor = torch.stack(sampled_train_gt_txt).to(device) # shape [N, D]
     train_err_img_tensor = torch.stack(sampled_train_err_img).to(device) # shape [N, D]
     train_err_txt_tensor = torch.stack(sampled_train_err_txt).to(device) # shape [N, D]
-    # combine the image tensor (NOTE: it should be duplicate of each other)
-    train_img_tensor = torch.concat((train_gt_img_tensor, train_err_img_tensor), dim=0)
-    train_txt_tensor = torch.concat((train_gt_txt_tensor, train_err_txt_tensor), dim=0)
+    # combine the image tensor (NOTE: it should be duplicate of each other) as a single training set
+    train_img_tensor = torch.concat((train_gt_img_tensor, train_err_img_tensor), dim=0) # [2N, D]
+    train_txt_tensor = torch.concat((train_gt_txt_tensor, train_err_txt_tensor), dim=0) # [2N, D]
     train_y= torch.tensor([1]*train_gt_img_tensor.shape[0]+[0]*train_err_img_tensor.shape[0]).to(device)  # shape [N+N], N is number of samples for each 
 
     # combine tensors for train
@@ -271,7 +311,7 @@ if __name__ == '__main__':
     val_gt_txt_tensor = torch.stack(val_gt_txt).to(device) # shape [N, D]
     val_err_img_tensor = torch.stack(val_err_img).to(device) # shape [N, D]
     val_err_txt_tensor = torch.stack(val_err_txt).to(device) # shape [N, D]
-    # combine the image tensor (NOTE: it should be duplicate of each other)
+    # combine the image tensor (NOTE: it should be duplicate of each other) as a single training set
     val_img_tensor = torch.concat((val_gt_img_tensor, val_err_img_tensor), dim=0)
     val_txt_tensor = torch.concat((val_gt_txt_tensor, val_err_txt_tensor), dim=0)
     val_y = torch.tensor([1]*val_gt_img_tensor.shape[0]+[0]*val_err_img_tensor.shape[0]).to(device)
@@ -281,7 +321,7 @@ if __name__ == '__main__':
     test_gt_txt_tensor = torch.stack(test_gt_txt).to(device)  # shape [N, D]
     test_err_img_tensor = torch.stack(test_err_img).to(device)  # shape [N, D]
     test_err_txt_tensor = torch.stack(test_err_txt).to(device)  # shape [N, D]
-    # combine the image tensor (NOTE: it should be duplicate of each other)
+    # combine the image tensor (NOTE: it should be duplicate of each other) as a single training set
     test_img_tensor = torch.concat((test_gt_img_tensor, test_err_img_tensor), dim=0)
     test_txt_tensor = torch.concat((test_gt_txt_tensor, test_err_txt_tensor), dim=0)
     test_y = torch.tensor([1]*test_gt_img_tensor.shape[0]+[0]*test_err_img_tensor.shape[0]).to(device)
@@ -290,36 +330,45 @@ if __name__ == '__main__':
     # Define classifier
     # -------------------------
     if FUSION_TYPE == 'concatenate':
-        input_dim = sampled_train_gt_img[0].shape[1] + sampled_train_gt_txt.shape[1]
+        input_dim = sampled_train_gt_img[0].shape[0] + sampled_train_gt_txt[0].shape[0]
         train_feats = torch.concat([train_img_tensor, train_txt_tensor], dim=1)
         val_feats = torch.concat([val_img_tensor, val_txt_tensor], dim=1)
         test_feats = torch.concat([test_img_tensor, test_txt_tensor], dim=1)
 
     elif FUSION_TYPE == 'subtraction':
-        input_dim = sampled_train_gt_img[0].shape[1]
+        input_dim = sampled_train_gt_img[0].shape[0]
         train_feats = train_img_tensor - train_txt_tensor
         val_feats = val_img_tensor - val_txt_tensor
         test_feats = test_img_tensor - test_txt_tensor
 
     elif FUSION_TYPE == 'addition':
-        input_dim = sampled_train_gt_img[0].shape[1]
+        input_dim = sampled_train_gt_img[0].shape[0]
         train_feats = train_img_tensor + train_txt_tensor
         val_feats = val_img_tensor + val_txt_tensor
         test_feats = test_img_tensor + test_txt_tensor
 
     classifier = LinearProjectionHead(input_dim, 1).to(device)
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.Adam(classifier.parameters(), lr=1e-4)
+    optimizer = torch.optim.Adam(classifier.parameters(), lr=LEARNING_RATE)
 
     print("Training classifier...")
-    train_classifier(train_feats, train_y, val_feats, val_y,  patience=5, max_epochs=50, batch_size=32)
+    train_classifier(
+        train_feats, 
+        train_y, 
+        val_feats, 
+        val_y,  
+        patience=PATIENCE, 
+        max_epochs=EPOCHS, 
+        batch_size=BATCH_SIZE
+        )
 
     # -------------------------
     # Evaluation on test set
     # -------------------------
+
     classifier.eval()
     test_dataset = TensorDataset(test_feats, test_y)
-    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
     all_preds, all_labels = [], []
     with torch.no_grad():
         for batch_x, batch_y in test_loader:
@@ -328,7 +377,7 @@ if __name__ == '__main__':
 
             test_logits = classifier(batch_x).squeeze()
             test_probs = torch.sigmoid(test_logits).cpu().numpy()
-            test_preds = (test_probs >= 0.5).astype(int)
+            test_preds = (test_probs >= PREDICTION_THRESHOLD).astype(int)
             test_labels = batch_y.cpu().numpy()  # <-- fix: use batch_y, not test_y
 
             all_preds.extend(test_preds)
@@ -341,3 +390,37 @@ if __name__ == '__main__':
         # Compute accuracy
         accuracy = (all_preds == all_labels).mean()
         print(f"Test Accuracy: {accuracy:.4f}")
+
+
+    # -------------------------
+    # save results to spreadsheet
+    # -------------------------
+
+    # Create a result dictionary
+    results = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "few_shot": FEW_SHOT,
+        "fusion_type": FUSION_TYPE,
+        "batch_size": BATCH_SIZE,
+        "input_size": INPUT_SIZE,
+        "learning_rate": LEARNING_RATE,
+        "patience": PATIENCE,
+        "epochs": EPOCHS,
+        "prediction_threshold": PREDICTION_THRESHOLD,
+        "test_accuracy": accuracy
+    }
+
+    # Convert to a DataFrame
+    results_df = pd.DataFrame([results])
+
+    # Define output path
+    out_path = "/cluster/projects/mcintoshgroup/publicData/fine-grain/experiment/results.csv"
+
+    # If file exists, append; otherwise create new
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    if os.path.exists(out_path):
+        results_df.to_csv(out_path, mode='a', header=False, index=False)
+    else:
+        results_df.to_csv(out_path, index=False)
+
+    print(f"Results saved to {out_path}")
