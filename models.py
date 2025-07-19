@@ -105,7 +105,10 @@ class cxrclip_model(vlm_model):
         print(f'    finished loading the weights the weights from {image_encoder_path}')
         return image_encoder, image_projection_head, text_encoder, text_projection_head
 
-class medclip(vlm_model):
+class medclip_model(vlm_model):
+    pass
+
+class mgca_model(vlm_model):
     pass
 
 
