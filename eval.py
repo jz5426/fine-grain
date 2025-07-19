@@ -49,7 +49,9 @@ def get_dataset(level, split, study_level_sampling, transform, cached_file_path)
 # -------------------------
 # Cache image and text embeddings
 # -------------------------
-def encode_dataset(dataloader, models):
+def encode_dataset(dataloader, models, pickle_dest):
+    # TODO: check if cache exists
+
     image_encoder = models['image_encoder']
     text_encoder = models['text_encoder']
     tokenizer = models['tokenizer']
@@ -102,7 +104,7 @@ def encode_dataset(dataloader, models):
             })
 
     # TODO: save as pickle object.
-    
+
 
     return ground_truth_pairs, err_pairs
 
@@ -115,6 +117,9 @@ def train_classifier(train_x_tensor, train_y_tensor, val_x_tensor, val_y_tensor,
     # Create batched DataLoader
     train_dataset = TensorDataset(train_x_tensor, train_y_tensor)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+
+    val_dataset = TensorDataset(val_x_tensor, val_y_tensor)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     best_val_loss = float('inf')
     best_state = None
@@ -136,14 +141,19 @@ def train_classifier(train_x_tensor, train_y_tensor, val_x_tensor, val_y_tensor,
 
             total_loss += loss.item()
 
+        avg_train_loss = total_loss / len(train_loader)
+        print(f"Epoch {epoch} | Train Loss: {avg_train_loss:.4f} | Val Loss: {val_loss.item():.4f}")
+
         # Validation
         classifier.eval()
         with torch.no_grad():
-            val_logits = classifier(val_x_tensor.to(device)).squeeze()
-            val_loss = criterion(val_logits, val_y_tensor.to(device).float())
+            val_loss = 0
+            for batch_x, batch_y in val_loader:
+                batch_x = batch_x.to(device)
+                batch_y = batch_y.to(device).float()
 
-        avg_train_loss = total_loss / len(train_loader)
-        print(f"Epoch {epoch} | Train Loss: {avg_train_loss:.4f} | Val Loss: {val_loss.item():.4f}")
+                val_logits = classifier(batch_x).squeeze()
+                val_loss += criterion(val_logits, batch_y)
 
         if val_loss.item() < best_val_loss:
             best_val_loss = val_loss.item()
@@ -199,9 +209,9 @@ if __name__ == '__main__':
     val_dataset = get_dataset('report', 'val', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/rexerr_val.pkl')
     test_dataset = get_dataset('report', 'test', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/rexerr_test.pkl')
 
-    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
     models = {
         'image_encoder': image_encoder,
@@ -302,20 +312,32 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(classifier.parameters(), lr=1e-4)
 
     print("Training classifier...")
-    # train_feats = torch.cat([train_img, train_txt], dim=1)
-    # val_feats = torch.cat([val_img, val_txt], dim=1)
     train_classifier(train_feats, train_y, val_feats, val_y,  patience=5, max_epochs=50, batch_size=32)
 
     # -------------------------
     # Evaluation on test set
     # -------------------------
     classifier.eval()
+    test_dataset = TensorDataset(test_feats, test_y)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+    all_preds, all_labels = [], []
     with torch.no_grad():
-        # test_feats = torch.cat([test_img, test_txt], dim=1).to(device)
-        test_logits = classifier(test_feats).squeeze()
-        test_probs = torch.sigmoid(test_logits).cpu().numpy()
-        test_preds = (test_probs >= 0.5).astype(int)
-        test_labels = test_y.numpy()
+        for batch_x, batch_y in test_loader:
+            batch_x = batch_x.to(device)
+            batch_y = batch_y.to(device).float()
 
-        acc = np.mean(test_preds == test_labels)
-        print(f"Test Accuracy: {acc:.4f}")
+            test_logits = classifier(batch_x).squeeze()
+            test_probs = torch.sigmoid(test_logits).cpu().numpy()
+            test_preds = (test_probs >= 0.5).astype(int)
+            test_labels = batch_y.cpu().numpy()  # <-- fix: use batch_y, not test_y
+
+            all_preds.extend(test_preds)
+            all_labels.extend(test_labels)
+
+        # Convert to NumPy arrays
+        all_preds = np.array(all_preds)
+        all_labels = np.array(all_labels)
+
+        # Compute accuracy
+        accuracy = (all_preds == all_labels).mean()
+        print(f"Test Accuracy: {accuracy:.4f}")
