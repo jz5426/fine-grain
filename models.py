@@ -26,7 +26,7 @@ class vlm_model():
         self.freeze_weights(self.text_projection)
 
     def freeze_weights(self, model):
-        assert model == self.image_encoder or model == self.text_encoder or model == self.tokenizer or model == self.image_projection
+        assert model == self.image_encoder or model == self.text_encoder or model == self.tokenizer or model == self.image_projection or model == self.text_projection
         for param in model.parameters():
             param.requires_grad = False
 
