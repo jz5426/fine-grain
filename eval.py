@@ -113,6 +113,10 @@ def encode_dataset(dataloader, models, pickle_dest):
                     'image_feats': img_feats[i],
                     'label': 0
                 }))
+            
+            # #NOTE: temporary
+            # if len(ground_truth_pairs) >= 256:
+            #     return ground_truth_pairs, err_pairs
 
     # Ensure the parent directories exist
     os.makedirs(os.path.dirname(pickle_dest), exist_ok=True)
@@ -185,11 +189,11 @@ def parse_args():
 
     parser.add_argument("--few_shot", type=float, default=0.1, help="Few-shot learning ratio")
     parser.add_argument("--fusion_type", type=str, default="concatenate", choices=["concatenate", "subtraction", "addition"], help="Type of fusion method")
-    parser.add_argument("--batch_size", type=int, default=512, help="Batch size for training")
+    parser.add_argument("--batch_size", type=int, default=1024, help="Batch size for training")
     parser.add_argument("--input_size", type=int, default=224, help="Input image size")
-    parser.add_argument("--learning_rate", type=float, default=1e-2, help="Learning rate")
-    parser.add_argument("--patience", type=int, default=5, help="Early stopping patience")
-    parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
+    parser.add_argument("--learning_rate", type=float, default=1e-3, help="Learning rate")
+    parser.add_argument("--patience", type=int, default=50, help="Early stopping patience")
+    parser.add_argument("--epochs", type=int, default=500, help="Number of training epochs")
     parser.add_argument("--prediction_threshold", type=float, default=0.5, help="Threshold for binary classification")
 
     return parser.parse_args()
@@ -390,7 +394,6 @@ if __name__ == '__main__':
         # Compute accuracy
         accuracy = (all_preds == all_labels).mean()
         print(f"Test Accuracy: {accuracy:.4f}")
-
 
     # -------------------------
     # save results to spreadsheet

@@ -1,0 +1,13 @@
+Script Parameters:
+  FEW_SHOT: 0.1
+  FUSION_TYPE: concatenate
+  BATCH_SIZE: 1024
+  INPUT_SIZE: 224
+  LEARNING_RATE: 0.001
+  PATIENCE: 50
+  EPOCHS: 500
+  PREDICTION_THRESHOLD: 0.5
+non loaded keys  {'logit_scale': tensor(3.1560)}
+    finished loading the weights the weights from /cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Image-Encoder/r50_m.tar
+Encoding train set...
+  0%|          | 0/197 [00:00<?, ?it/s]  1%|          | 1/197 [01:15<4:05:45, 75.23s/it]  1%|          | 2/197 [02:28<4:01:06, 74.19s/it]  2%|▏         | 3/197 [03:41<3:58:10, 73.66s/it]  2%|▏         | 4/197 [04:55<3:56:33, 73.54s/it]  3%|▎         | 5/197 [06:06<3:53:21, 72.93s/it]  3%|▎         | 6/197 [07:17<3:49:58, 72.24s/it]  4%|▎         | 7/197 [08:29<3:48:12, 72.07s/it]  4%|▍         | 8/197 [09:40<3:46:15, 71.83s/it]

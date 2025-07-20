@@ -53,7 +53,14 @@ class RexErrDataset(Dataset):
                 study_folder = f"s{study_id}"
 
                 # 6. create image path for each dicom_id
-                study_id_paths = [os.path.join(mimicCxrJpg_path, parent_folder, patient_folder, study_folder, f"{dicom_id.strip()}.jpg") for dicom_id in dicom_ids]
+                study_id_paths = []
+                for dicom_id in dicom_ids:
+                    id_path = os.path.join(mimicCxrJpg_path, parent_folder, patient_folder, study_folder, f"{dicom_id.strip()}.jpg")
+                    if os.path.exists(id_path):
+                        study_id_paths.append(id_path)
+                    else:
+                        print(id_path, ' does not exists in MIMIC_CXR_JPG directory!! => NOT SAVING IT')
+
                 result.append({
                     'study_id': study_id, # str/int
                     'image_paths': study_id_paths, # list all image within the study_id share the same text report
@@ -61,11 +68,6 @@ class RexErrDataset(Dataset):
                     'error_text': row['error_report'], # str
                     'errors_sampled': row['errors_sampled'] # str
                 })
-
-                # 7. check individual path exists
-                for path in study_id_paths:
-                    if not os.path.exists(path):
-                        print(path, ' does not exists in MIMIC_CXR_JPG directory!!')
 
         # 8. return the list
         return result
@@ -97,12 +99,13 @@ class RexErrDataset(Dataset):
         return results
 
 if __name__ == '__main__':
-    SPLIT = 'test'
-    LEVEL = 'report'
+    pass
+    # SPLIT = 'test'
+    # LEVEL = 'report'
     
-    # rexerr path
-    rexerr = f'/cluster/projects/mcintoshgroup/publicData/rexerr-v1/ReXErr-{LEVEL}-level/ReXErr-{LEVEL}-level_{SPLIT}.csv'
+    # # rexerr path
+    # rexerr = f'/cluster/projects/mcintoshgroup/publicData/rexerr-v1/ReXErr-{LEVEL}-level/ReXErr-{LEVEL}-level_{SPLIT}.csv'
 
-    # mimic-cxr-jpg path
-    mimicCxrJpg = '/cluster/projects/mcintoshgroup/publicData/MIMIC-CXR/MIMIC-CXR-JPG'
+    # # mimic-cxr-jpg path
+    # mimicCxrJpg = '/cluster/projects/mcintoshgroup/publicData/MIMIC-CXR/MIMIC-CXR-JPG'
 
