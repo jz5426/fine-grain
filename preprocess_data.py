@@ -61,13 +61,14 @@ class RexErrDataset(Dataset):
                     else:
                         print(id_path, ' does not exists in MIMIC_CXR_JPG directory!! => NOT SAVING IT')
 
-                result.append({
-                    'study_id': study_id, # str/int
-                    'image_paths': study_id_paths, # list all image within the study_id share the same text report
-                    'original_text': row['original_report'], # str
-                    'error_text': row['error_report'], # str
-                    'errors_sampled': row['errors_sampled'] # str
-                })
+                if len(study_id_paths) > 0:
+                    result.append({
+                        'study_id': study_id, # str/int
+                        'image_paths': study_id_paths, # list all image within the study_id share the same text report
+                        'original_text': row['original_report'], # str
+                        'error_text': row['error_report'], # str
+                        'errors_sampled': row['errors_sampled'] # str
+                    })
 
         # 8. return the list
         return result
