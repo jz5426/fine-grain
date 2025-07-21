@@ -57,11 +57,6 @@ def get_dataset(level, split, study_level_sampling, transform, cached_file_path)
 def encode_dataset(dataloader, models, pickle_dest):
 
     if os.path.exists(pickle_dest):
-        # with open(pickle_dest, 'rb') as f:
-        #     data = pickle.load(f)
-        #     ground_truth_pairs, err_pairs = data
-        #     return ground_truth_pairs, err_pairs
-
         try:
             data = joblib.load(pickle_dest, mmap_mode='r')
             print("[SUCCESS] Object loaded successfully.")
@@ -129,8 +124,6 @@ def encode_dataset(dataloader, models, pickle_dest):
 
     # Ensure the parent directories exist
     os.makedirs(os.path.dirname(pickle_dest), exist_ok=True)
-    # with open(pickle_dest, 'wb') as f:
-    #     pickle.dump((ground_truth_pairs, err_pairs), f)
     joblib.dump((ground_truth_pairs, err_pairs), pickle_dest, compress=3)
 
     return ground_truth_pairs, err_pairs
@@ -205,6 +198,7 @@ def parse_args():
     parser.add_argument("--patience", type=int, default=100, help="Early stopping patience")
     parser.add_argument("--epochs", type=int, default=800, help="Number of training epochs")
     parser.add_argument("--prediction_threshold", type=float, default=0.5, help="Threshold for binary classification")
+    parser.add_argument("--model", type=str, default="r50_mcc.tar", help="pretrained model checkpoint file name")
 
     return parser.parse_args()
 
@@ -219,6 +213,8 @@ if __name__ == '__main__':
     PATIENCE = args.patience
     EPOCHS = args.epochs
     PREDICTION_THRESHOLD = args.prediction_threshold
+    MODEL_CHECKPOINT_NAME = args.model
+    EXPERIMENT_MODEL = None
 
     print("Script Parameters:")
     print(f"  FEW_SHOT: {FEW_SHOT}")
@@ -229,17 +225,29 @@ if __name__ == '__main__':
     print(f"  PATIENCE: {PATIENCE}")
     print(f"  EPOCHS: {EPOCHS}")
     print(f"  PREDICTION_THRESHOLD: {PREDICTION_THRESHOLD}")
+    print(f"  EXPERIMENT_MODEL: {EXPERIMENT_MODEL}")
 
-    cxrclip = cxrclip_model(
-        '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Image-Encoder/r50_m.tar', 
-        '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/', 
-        '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/'
-        )
-    image_encoder = cxrclip.image_encoder
-    image_projector = cxrclip.image_projection
-    text_encoder = cxrclip.text_encoder
-    text_projector = cxrclip.text_projection
-    tokenizer = cxrclip.tokenizer
+    if MODEL_CHECKPOINT_NAME in ['r50_mcc.tar', 'r50_mc.tar', 'r50_m.tar']:
+        cxrclip = cxrclip_model(
+            f'/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Image-Encoder/{MODEL_CHECKPOINT_NAME}', 
+            '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/', 
+            '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/'
+            )
+        image_encoder = cxrclip.image_encoder
+        image_projector = cxrclip.image_projection
+        text_encoder = cxrclip.text_encoder
+        text_projector = cxrclip.text_projection
+        tokenizer = cxrclip.tokenizer
+
+        if MODEL_CHECKPOINT_NAME == 'r50_mcc.tar':
+            EXPERIMENT_MODEL = 'cxrclip_r50mcc'
+        elif MODEL_CHECKPOINT_NAME == 'r50_mc.tar':
+            EXPERIMENT_MODEL == 'cxrclip_r50mc'
+        elif MODEL_CHECKPOINT_NAME == 'r50_m.tar':
+            EXPERIMENT_MODEL == 'cxrclip_r50m'
+        else:
+            assert False
+    print(f"  EXPERIMENT_MODEL: {EXPERIMENT_MODEL}")
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     image_encoder.to(device)
@@ -319,6 +327,7 @@ if __name__ == '__main__':
     train_img_tensor = torch.concat((train_gt_img_tensor, train_err_img_tensor), dim=0) # [2N, D]
     train_txt_tensor = torch.concat((train_gt_txt_tensor, train_err_txt_tensor), dim=0) # [2N, D]
     train_y= torch.tensor([1]*train_gt_img_tensor.shape[0]+[0]*train_err_img_tensor.shape[0]).to(device)  # shape [N+N], N is number of samples for each 
+    print(f' Few-shot size: {train_y.shape}')
 
     # combine tensors for train
     val_gt_img_tensor = torch.stack(val_gt_img).to(device) # shape [N, D]
@@ -427,7 +436,7 @@ if __name__ == '__main__':
     results_df = pd.DataFrame([results])
 
     # Define output path
-    out_path = "/cluster/projects/mcintoshgroup/publicData/fine-grain/experiment/results.csv"
+    out_path = f"/cluster/projects/mcintoshgroup/publicData/fine-grain/experiment/{EXPERIMENT_MODEL}_results.csv"
 
     # If file exists, append; otherwise create new
     os.makedirs(os.path.dirname(out_path), exist_ok=True)

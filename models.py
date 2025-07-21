@@ -65,6 +65,7 @@ class cxrclip_model(vlm_model):
                 image_encoder_state_dict[key.replace("image_encoder.", "", 1)] = saved_state_dict[key]
             elif 'image_projection.' in key:
                 image_projection_state_dict[key.replace("image_projection.", "", 1)] = saved_state_dict[key]
+            # load the pretrained text encoder
             elif 'text_encoder.' in key:
                 text_encoder_state_dict[key.replace("text_encoder.text_encoder.", "", 1)] = saved_state_dict[key]
             elif 'text_projection.' in key:
