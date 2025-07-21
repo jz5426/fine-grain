@@ -22,6 +22,7 @@ from types import SimpleNamespace
 import argparse
 import pandas as pd
 from datetime import datetime
+import joblib
 
 def l2norm(t):
     return F.normalize(t, dim = -1)
@@ -56,10 +57,18 @@ def get_dataset(level, split, study_level_sampling, transform, cached_file_path)
 def encode_dataset(dataloader, models, pickle_dest):
 
     if os.path.exists(pickle_dest):
-        with open(pickle_dest, 'rb') as f:
-            data = pickle.load(f)
+        # with open(pickle_dest, 'rb') as f:
+        #     data = pickle.load(f)
+        #     ground_truth_pairs, err_pairs = data
+        #     return ground_truth_pairs, err_pairs
+
+        try:
+            data = joblib.load(pickle_dest, mmap_mode='r')
+            print("[SUCCESS] Object loaded successfully.")
             ground_truth_pairs, err_pairs = data
             return ground_truth_pairs, err_pairs
+        except Exception as e:
+            print("[ERROR] Failed to load object.")
 
     image_encoder = models['image_encoder']
     text_encoder = models['text_encoder']
@@ -102,15 +111,15 @@ def encode_dataset(dataloader, models, pickle_dest):
             for i, _id in enumerate(study_id):
                 ground_truth_pairs.append(SimpleNamespace(**{
                     'study_id': _id,
-                    'text_feats': origin_txt_feats[i], # [512]
-                    'image_feats': img_feats[i], # [512]
+                    'text_feats': origin_txt_feats[i].cpu(), # [512]
+                    'image_feats': img_feats[i].cpu(), # [512]
                     'label': 1
                 }))
 
                 err_pairs.append(SimpleNamespace(**{
                     'study_id': _id,
-                    'text_feats': err_txt_feats[i],
-                    'image_feats': img_feats[i],
+                    'text_feats': err_txt_feats[i].cpu(),
+                    'image_feats': img_feats[i].cpu(),
                     'label': 0
                 }))
             
@@ -120,8 +129,9 @@ def encode_dataset(dataloader, models, pickle_dest):
 
     # Ensure the parent directories exist
     os.makedirs(os.path.dirname(pickle_dest), exist_ok=True)
-    with open(pickle_dest, 'wb') as f:
-        pickle.dump((ground_truth_pairs, err_pairs), f)
+    # with open(pickle_dest, 'wb') as f:
+    #     pickle.dump((ground_truth_pairs, err_pairs), f)
+    joblib.dump((ground_truth_pairs, err_pairs), pickle_dest, compress=3)
 
     return ground_truth_pairs, err_pairs
 
@@ -187,13 +197,13 @@ def train_classifier(train_x_tensor, train_y_tensor, val_x_tensor, val_y_tensor,
 def parse_args():
     parser = argparse.ArgumentParser(description="Training script with configurable parameters")
 
-    parser.add_argument("--few_shot", type=float, default=0.1, help="Few-shot learning ratio")
-    parser.add_argument("--fusion_type", type=str, default="concatenate", choices=["concatenate", "subtraction", "addition"], help="Type of fusion method")
+    parser.add_argument("--few_shot", type=float, default=0.01, help="Few-shot learning ratio")
+    parser.add_argument("--fusion_type", type=str, default="subtraction", choices=["concatenate", "subtraction", "addition"], help="Type of fusion method")
     parser.add_argument("--batch_size", type=int, default=1024, help="Batch size for training")
     parser.add_argument("--input_size", type=int, default=224, help="Input image size")
-    parser.add_argument("--learning_rate", type=float, default=1e-3, help="Learning rate")
-    parser.add_argument("--patience", type=int, default=50, help="Early stopping patience")
-    parser.add_argument("--epochs", type=int, default=500, help="Number of training epochs")
+    parser.add_argument("--learning_rate", type=float, default=5e-2, help="Learning rate")
+    parser.add_argument("--patience", type=int, default=100, help="Early stopping patience")
+    parser.add_argument("--epochs", type=int, default=800, help="Number of training epochs")
     parser.add_argument("--prediction_threshold", type=float, default=0.5, help="Threshold for binary classification")
 
     return parser.parse_args()
@@ -266,13 +276,13 @@ if __name__ == '__main__':
     }
 
     print("Encoding train set...")
-    train_gt, train_err = encode_dataset(train_loader, models, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/train_features.pkl')
+    train_gt, train_err = encode_dataset(train_loader, models, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/train_features.joblib')
     
     print("Encoding val set...")
-    val_gt, val_err = encode_dataset(val_loader, models, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/val_features.pkl')
+    val_gt, val_err = encode_dataset(val_loader, models, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/val_features.joblib')
 
     print("Encoding test set...")
-    test_gt, test_err = encode_dataset(test_loader, models, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/test_features.pkl')
+    test_gt, test_err = encode_dataset(test_loader, models, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/test_features.joblib')
 
     # -------------------------
     # Few-shot sampling (by %) and combine the tensors

@@ -1,31 +1,0 @@
-Script Parameters:
-  FEW_SHOT: 0.1
-  FUSION_TYPE: concatenate
-  BATCH_SIZE: 1024
-  INPUT_SIZE: 224
-  LEARNING_RATE: 0.001
-  PATIENCE: 50
-  EPOCHS: 500
-  PREDICTION_THRESHOLD: 0.5
-non loaded keys  {'logit_scale': tensor(3.1560)}
-    finished loading the weights the weights from /cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Image-Encoder/r50_m.tar
-Encoding train set...
-  0%|          | 0/197 [00:00<?, ?it/s]  1%|          | 1/197 [01:15<4:05:45, 75.23s/it]  1%|          | 2/197 [02:28<4:01:06, 74.19s/it]  2%|▏         | 3/197 [03:41<3:58:10, 73.66s/it]  2%|▏         | 4/197 [04:55<3:56:33, 73.54s/it]  3%|▎         | 5/197 [06:06<3:53:21, 72.93s/it]  3%|▎         | 6/197 [07:17<3:49:58, 72.24s/it]  4%|▎         | 7/197 [08:29<3:48:12, 72.07s/it]  4%|▍         | 8/197 [09:40<3:46:15, 71.83s/it]  5%|▍         | 9/197 [10:52<3:44:32, 71.66s/it]  5%|▌         | 10/197 [12:06<3:45:44, 72.43s/it]  6%|▌         | 11/197 [13:17<3:43:33, 72.12s/it]  6%|▌         | 12/197 [14:30<3:42:40, 72.22s/it]  7%|▋         | 13/197 [15:41<3:40:38, 71.95s/it]  7%|▋         | 14/197 [16:53<3:39:02, 71.82s/it]  8%|▊         | 15/197 [18:05<3:38:24, 72.00s/it]  8%|▊         | 16/197 [19:16<3:36:18, 71.71s/it]  9%|▊         | 17/197 [20:28<3:35:50, 71.95s/it]  9%|▉         | 18/197 [21:41<3:34:52, 72.02s/it] 10%|▉         | 19/197 [22:52<3:33:04, 71.82s/it] 10%|█         | 20/197 [24:05<3:32:31, 72.05s/it] 11%|█         | 21/197 [25:17<3:31:27, 72.09s/it] 11%|█         | 22/197 [26:29<3:29:57, 71.99s/it] 12%|█▏        | 23/197 [27:39<3:27:25, 71.53s/it] 12%|█▏        | 24/197 [28:53<3:28:12, 72.21s/it] 13%|█▎        | 25/197 [30:05<3:26:40, 72.10s/it] 13%|█▎        | 25/197 [30:41<3:31:12, 73.68s/it]
-Traceback (most recent call last):
-  File "/cluster/home/t135419uhn/fine-grain/eval.py", line 269, in <module>
-    train_gt, train_err = encode_dataset(train_loader, models, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/train_features.pkl')
-  File "/cluster/home/t135419uhn/fine-grain/eval.py", line 72, in encode_dataset
-    for batch in tqdm(dataloader):
-  File "/cluster/home/t135419uhn/miniconda3/envs/ctclip/lib/python3.10/site-packages/tqdm/std.py", line 1181, in __iter__
-    for obj in iterable:
-  File "/cluster/home/t135419uhn/miniconda3/envs/ctclip/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 701, in __next__
-    data = self._next_data()
-  File "/cluster/home/t135419uhn/miniconda3/envs/ctclip/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 757, in _next_data
-    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
-  File "/cluster/home/t135419uhn/miniconda3/envs/ctclip/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 52, in fetch
-    data = [self.dataset[idx] for idx in possibly_batched_index]
-  File "/cluster/home/t135419uhn/miniconda3/envs/ctclip/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 52, in <listcomp>
-    data = [self.dataset[idx] for idx in possibly_batched_index]
-  File "/cluster/home/t135419uhn/fine-grain/preprocess_data.py", line 79, in __getitem__
-    assert len(image_paths) > 0
-AssertionError
