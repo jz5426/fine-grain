@@ -110,7 +110,8 @@ class medclip_model(vlm_model):
     pass
 
 class mgca_model(vlm_model):
-    pass
+    def __init__(self, image_encoder_path, text_encoder_path, tokenizer_path):
+        pass
 
 
 class ResNet50(nn.Module):

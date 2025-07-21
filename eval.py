@@ -128,7 +128,6 @@ def encode_dataset(dataloader, models, pickle_dest):
 
     return ground_truth_pairs, err_pairs
 
-
 # -------------------------
 # Training loop
 # -------------------------
@@ -191,7 +190,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Training script with configurable parameters")
 
     parser.add_argument("--few_shot", type=float, default=0.01, help="Few-shot learning ratio")
-    parser.add_argument("--fusion_type", type=str, default="subtraction", choices=["concatenate", "subtraction", "addition"], help="Type of fusion method")
+    parser.add_argument("--fusion_type", type=str, default="text_only", choices=["concatenate", "subtraction", "addition", "text_only"], help="Type of fusion method")
     parser.add_argument("--batch_size", type=int, default=1024, help="Batch size for training")
     parser.add_argument("--input_size", type=int, default=224, help="Input image size")
     parser.add_argument("--learning_rate", type=float, default=5e-2, help="Learning rate")
@@ -214,6 +213,7 @@ if __name__ == '__main__':
     EPOCHS = args.epochs
     PREDICTION_THRESHOLD = args.prediction_threshold
     MODEL_CHECKPOINT_NAME = args.model
+    IS_TEXT_ONLY_EVALUATION = True if args.fusion_type =='text_only' else False
     EXPERIMENT_MODEL = None
 
     print("Script Parameters:")
@@ -369,6 +369,12 @@ if __name__ == '__main__':
         train_feats = train_img_tensor + train_txt_tensor
         val_feats = val_img_tensor + val_txt_tensor
         test_feats = test_img_tensor + test_txt_tensor
+    
+    elif FUSION_TYPE == 'text_only':
+        input_dim = train_txt_tensor[0].shape[0] # should be the same as the image embedding dimension
+        train_feats = train_txt_tensor
+        val_feats = val_txt_tensor
+        test_feats = test_txt_tensor
 
     classifier = LinearProjectionHead(input_dim, 1).to(device)
     criterion = nn.BCEWithLogitsLoss()
@@ -436,7 +442,7 @@ if __name__ == '__main__':
     results_df = pd.DataFrame([results])
 
     # Define output path
-    out_path = f"/cluster/projects/mcintoshgroup/publicData/fine-grain/experiment/{EXPERIMENT_MODEL}_results.csv"
+    out_path = f"/cluster/projects/mcintoshgroup/publicData/fine-grain/experiment/{EXPERIMENT_MODEL}{'_text_only' if IS_TEXT_ONLY_EVALUATION else ''}_results.csv"
 
     # If file exists, append; otherwise create new
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
