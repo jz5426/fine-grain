@@ -327,7 +327,7 @@ if __name__ == '__main__':
     train_img_tensor = torch.concat((train_gt_img_tensor, train_err_img_tensor), dim=0) # [2N, D]
     train_txt_tensor = torch.concat((train_gt_txt_tensor, train_err_txt_tensor), dim=0) # [2N, D]
     train_y= torch.tensor([1]*train_gt_img_tensor.shape[0]+[0]*train_err_img_tensor.shape[0]).to(device)  # shape [N+N], N is number of samples for each 
-    print(f' Few-shot size: {train_y.shape}')
+    print(f' Few-shot size: {train_y.shape}, total training size {len(train_gt)}')
 
     # combine tensors for train
     val_gt_img_tensor = torch.stack(val_gt_img).to(device) # shape [N, D]
