@@ -70,6 +70,7 @@ def encode_dataset(dataloader, models, pickle_dest):
     tokenizer = models['tokenizer']
     image_projector = models['image_projector']
     text_projector = models['text_projector']
+    model_name = models['model_name']
 
     ground_truth_pairs, err_pairs = [], []
     with torch.no_grad():
@@ -87,12 +88,20 @@ def encode_dataset(dataloader, models, pickle_dest):
 
             # Encode original text
             inputs = tokenizer(origin_text, return_tensors="pt", padding=True, truncation=True, max_length=256).to(device) # TODO:
-            origin_txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token
+            if model_name == 'cxrclip':
+                origin_txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token
+            elif model_name == 'mgca':
+                origin_txt_feats, word_feat_q, word_attn_q, sents = text_encoder(inputs['input_ids'], inputs['token_type_ids'], inputs['attention_mask'])
+
             origin_txt_feats = text_projector(origin_txt_feats)
 
             # Encoder error text
             inputs = tokenizer(err_text, return_tensors="pt", padding=True, truncation=True, max_length=256).to(device) # TODO:
-            err_txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token
+            if model_name == 'cxrclip':
+                err_txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token
+            elif model_name == 'mgca':
+                err_txt_feats, word_feat_q, word_attn_q, sents = text_encoder(inputs['input_ids'], inputs['token_type_ids'], inputs['attention_mask'])
+            
             err_txt_feats = text_projector(err_txt_feats)
 
             assert img_feats.shape == origin_txt_feats.shape and origin_txt_feats.shape == err_txt_feats.shape
@@ -191,7 +200,7 @@ def parse_args():
 
     parser.add_argument("--few_shot", type=float, default=0.01, help="Few-shot learning ratio")
     parser.add_argument("--fusion_type", type=str, default="text_only", choices=["concatenate", "subtraction", "addition", "text_only"], help="Type of fusion method")
-    parser.add_argument("--batch_size", type=int, default=1024, help="Batch size for training")
+    parser.add_argument("--batch_size", type=int, default=2, help="Batch size for training")
     parser.add_argument("--learning_rate", type=float, default=5e-2, help="Learning rate")
     parser.add_argument("--patience", type=int, default=100, help="Early stopping patience")
     parser.add_argument("--epochs", type=int, default=800, help="Number of training epochs")
@@ -217,6 +226,7 @@ if __name__ == '__main__':
     INPUT_SIZE = None
     TEXT_TRUNCATION = None
     CACHE_PARENT_DIR = None
+    MODEL_NAME = None
 
     print("Script Parameters:")
     print(f"  FEW_SHOT: {FEW_SHOT}")
@@ -246,22 +256,24 @@ if __name__ == '__main__':
 
         INPUT_SIZE = 224
         TEXT_TRUNCATION = 256
+        MODEL_NAME = 'cxrclip'
         CACHE_PARENT_DIR = 'cxrclip_encoder_features'
         mean = [0.485, 0.456, 0.406]
         std = [0.229, 0.224, 0.225]
     elif MODEL_CHECKPOINT_NAME == 'mgca_resnet_50.ckpt':
-        assert False
+        # assert False
         # NOTE: this model cannot do retrieval task => not able to feed in the whole report to get the embeddings.
-        # vlm = mgca_model(
-        #     f'/cluster/projects/mcintoshgroup/publicData/fine-grain/MGCA-Image-Encoder/{MODEL_CHECKPOINT_NAME}', 
-        #     '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/', 
-        #     '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/'
-        # )
-        # INPUT_SIZE = 224
-        # TEXT_TRUNCATION = 256
-        # CACHE_PARENT_DIR = 'mgca_encoder_features'
-        # mean = [0.5, 0.5, 0.5] 
-        # std = [0.5, 0.5, 0.5]
+        vlm = mgca_model(
+            f'/cluster/projects/mcintoshgroup/publicData/fine-grain/MGCA-Image-Encoder/{MODEL_CHECKPOINT_NAME}', 
+            '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/', 
+            '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/'
+        )
+        INPUT_SIZE = 224
+        TEXT_TRUNCATION = 256
+        MODEL_NAME = 'mgca'
+        CACHE_PARENT_DIR = 'mgca_encoder_features'
+        mean = [0.5, 0.5, 0.5] 
+        std = [0.5, 0.5, 0.5]
 
     print(f"  EXPERIMENT_MODEL: {EXPERIMENT_MODEL}")
 
@@ -300,7 +312,8 @@ if __name__ == '__main__':
         'text_encoder': text_encoder,
         'tokenizer': tokenizer,
         'image_projector': image_projector,
-        'text_projector': text_projector
+        'text_projector': text_projector,
+        'model_name': MODEL_NAME
     }
 
     print("Encoding train set...")
