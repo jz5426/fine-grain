@@ -13,44 +13,44 @@
 
 source activate ctclip
 
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar  --few_shot 0.01 --learning_rate 0.05 --fusion_type subtraction
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.05 --learning_rate 0.05 --fusion_type subtraction
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.10 --learning_rate 0.05 --fusion_type subtraction
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.20 --learning_rate 0.05 --fusion_type subtraction
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.50 --learning_rate 0.05 --fusion_type subtraction
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.80 --learning_rate 0.05 --fusion_type subtraction
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 1 --learning_rate 0.05 --fusion_type subtraction
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar  --few_shot 0.01 --learning_rate 0.05 --fusion_type subtraction
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.05 --learning_rate 0.05 --fusion_type subtraction
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.10 --learning_rate 0.05 --fusion_type subtraction
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.20 --learning_rate 0.05 --fusion_type subtraction
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.50 --learning_rate 0.05 --fusion_type subtraction
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.80 --learning_rate 0.05 --fusion_type subtraction
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 1 --learning_rate 0.05 --fusion_type subtraction
 
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.01 --learning_rate 0.05 --fusion_type concatenate
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.05 --learning_rate 0.05 --fusion_type concatenate
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.10 --learning_rate 0.05 --fusion_type concatenate
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.20 --learning_rate 0.05 --fusion_type concatenate
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.50 --learning_rate 0.05 --fusion_type concatenate
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.8 --learning_rate 0.05 --fusion_type concatenate
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 1 --learning_rate 0.05 --fusion_type concatenate
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.01 --learning_rate 0.05 --fusion_type concatenate
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.05 --learning_rate 0.05 --fusion_type concatenate
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.10 --learning_rate 0.05 --fusion_type concatenate
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.20 --learning_rate 0.05 --fusion_type concatenate
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.50 --learning_rate 0.05 --fusion_type concatenate
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.8 --learning_rate 0.05 --fusion_type concatenate
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 1 --learning_rate 0.05 --fusion_type concatenate
 
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.01 --learning_rate 0.05 --fusion_type addition
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.05 --learning_rate 0.05 --fusion_type addition
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.10 --learning_rate 0.05 --fusion_type addition
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.20 --learning_rate 0.05 --fusion_type addition
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.50 --learning_rate 0.05 --fusion_type addition
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.8 --learning_rate 0.05 --fusion_type addition
-# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 1 --learning_rate 0.05 --fusion_type addition
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.01 --learning_rate 0.05 --fusion_type addition
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.05 --learning_rate 0.05 --fusion_type addition
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.10 --learning_rate 0.05 --fusion_type addition
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.20 --learning_rate 0.05 --fusion_type addition
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.50 --learning_rate 0.05 --fusion_type addition
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.8 --learning_rate 0.05 --fusion_type addition
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 1 --learning_rate 0.05 --fusion_type addition
 
 
 # TEXT ONLY
-python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar  --few_shot 0.01 --learning_rate 0.05 --fusion_type text_only
-python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.05 --learning_rate 0.05 --fusion_type text_only
-python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.10 --learning_rate 0.05 --fusion_type text_only
-python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.20 --learning_rate 0.05 --fusion_type text_only
-python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.50 --learning_rate 0.05 --fusion_type text_only
-python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.80 --learning_rate 0.05 --fusion_type text_only
-python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 1 --learning_rate 0.05 --fusion_type text_only
+# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar  --few_shot 0.01 --learning_rate 0.05 --fusion_type text_only
+# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.05 --learning_rate 0.05 --fusion_type text_only
+# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.10 --learning_rate 0.05 --fusion_type text_only
+# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.20 --learning_rate 0.05 --fusion_type text_only
+# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.50 --learning_rate 0.05 --fusion_type text_only
+# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 0.80 --learning_rate 0.05 --fusion_type text_only
+# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_mcc.tar --few_shot 1 --learning_rate 0.05 --fusion_type text_only
 
-python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_m.tar  --few_shot 0.01 --learning_rate 0.05 --fusion_type text_only
-python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_m.tar --few_shot 0.05 --learning_rate 0.05 --fusion_type text_only
-python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_m.tar --few_shot 0.10 --learning_rate 0.05 --fusion_type text_only
-python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_m.tar --few_shot 0.20 --learning_rate 0.05 --fusion_type text_only
-python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_m.tar --few_shot 0.50 --learning_rate 0.05 --fusion_type text_only
-python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_m.tar --few_shot 0.80 --learning_rate 0.05 --fusion_type text_only
-python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_m.tar --few_shot 1 --learning_rate 0.05 --fusion_type text_only
+# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_m.tar  --few_shot 0.01 --learning_rate 0.05 --fusion_type text_only
+# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_m.tar --few_shot 0.05 --learning_rate 0.05 --fusion_type text_only
+# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_m.tar --few_shot 0.10 --learning_rate 0.05 --fusion_type text_only
+# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_m.tar --few_shot 0.20 --learning_rate 0.05 --fusion_type text_only
+# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_m.tar --few_shot 0.50 --learning_rate 0.05 --fusion_type text_only
+# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_m.tar --few_shot 0.80 --learning_rate 0.05 --fusion_type text_only
+# python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_m.tar --few_shot 1 --learning_rate 0.05 --fusion_type text_only

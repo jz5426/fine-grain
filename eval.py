@@ -216,6 +216,7 @@ if __name__ == '__main__':
     EXPERIMENT_MODEL = None
     INPUT_SIZE = None
     TEXT_TRUNCATION = None
+    CACHE_PARENT_DIR = None
 
     print("Script Parameters:")
     print(f"  FEW_SHOT: {FEW_SHOT}")
@@ -234,7 +235,6 @@ if __name__ == '__main__':
             '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/', 
             '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/'
             )
-
         if MODEL_CHECKPOINT_NAME == 'r50_mcc.tar':
             EXPERIMENT_MODEL = 'cxrclip_r50mcc'
         elif MODEL_CHECKPOINT_NAME == 'r50_mc.tar':
@@ -246,22 +246,24 @@ if __name__ == '__main__':
 
         INPUT_SIZE = 224
         TEXT_TRUNCATION = 256
+        CACHE_PARENT_DIR = 'cxrclip_encoder_features'
         mean = [0.485, 0.456, 0.406]
         std = [0.229, 0.224, 0.225]
     elif MODEL_CHECKPOINT_NAME == 'mgca_resnet_50.ckpt':
-        vlm = mgca_model(
-            f'/cluster/projects/mcintoshgroup/publicData/fine-grain/MGCA-Image-Encoder/{MODEL_CHECKPOINT_NAME}', 
-            '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/', 
-            '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/'
-        )
-        # TODO: double check the followings
-        INPUT_SIZE = 224
-        TEXT_TRUNCATION = 256
-        mean = [0.5, 0.5, 0.5] 
-        std = [0.5, 0.5, 0.5]
+        assert False
+        # NOTE: this model cannot do retrieval task => not able to feed in the whole report to get the embeddings.
+        # vlm = mgca_model(
+        #     f'/cluster/projects/mcintoshgroup/publicData/fine-grain/MGCA-Image-Encoder/{MODEL_CHECKPOINT_NAME}', 
+        #     '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/', 
+        #     '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/'
+        # )
+        # INPUT_SIZE = 224
+        # TEXT_TRUNCATION = 256
+        # CACHE_PARENT_DIR = 'mgca_encoder_features'
+        # mean = [0.5, 0.5, 0.5] 
+        # std = [0.5, 0.5, 0.5]
 
     print(f"  EXPERIMENT_MODEL: {EXPERIMENT_MODEL}")
-
 
     image_encoder = vlm.image_encoder
     image_projector = vlm.image_projection
@@ -302,13 +304,13 @@ if __name__ == '__main__':
     }
 
     print("Encoding train set...")
-    train_gt, train_err = encode_dataset(train_loader, models, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/train_features.joblib')
+    train_gt, train_err = encode_dataset(train_loader, models, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/{CACHE_PARENT_DIR}/train_features.joblib')
     
     print("Encoding val set...")
-    val_gt, val_err = encode_dataset(val_loader, models, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/val_features.joblib')
+    val_gt, val_err = encode_dataset(val_loader, models, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/{CACHE_PARENT_DIR}/val_features.joblib')
 
     print("Encoding test set...")
-    test_gt, test_err = encode_dataset(test_loader, models, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/test_features.joblib')
+    test_gt, test_err = encode_dataset(test_loader, models, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/{CACHE_PARENT_DIR}/test_features.joblib')
 
     # -------------------------
     # Few-shot sampling (by %) and combine the tensors
