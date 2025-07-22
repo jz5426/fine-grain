@@ -242,9 +242,9 @@ if __name__ == '__main__':
         if MODEL_CHECKPOINT_NAME == 'r50_mcc.tar':
             EXPERIMENT_MODEL = 'cxrclip_r50mcc'
         elif MODEL_CHECKPOINT_NAME == 'r50_mc.tar':
-            EXPERIMENT_MODEL == 'cxrclip_r50mc'
+            EXPERIMENT_MODEL = 'cxrclip_r50mc'
         elif MODEL_CHECKPOINT_NAME == 'r50_m.tar':
-            EXPERIMENT_MODEL == 'cxrclip_r50m'
+            EXPERIMENT_MODEL = 'cxrclip_r50m'
         else:
             assert False
     print(f"  EXPERIMENT_MODEL: {EXPERIMENT_MODEL}")
