@@ -12,7 +12,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 import numpy as np
 
-from models import cxrclip_model, LinearProjectionHead
+from vlm_models import cxrclip_model, LinearProjectionHead, mgca_model
 from preprocess_data import RexErrDataset
 
 import os
@@ -192,12 +192,11 @@ def parse_args():
     parser.add_argument("--few_shot", type=float, default=0.01, help="Few-shot learning ratio")
     parser.add_argument("--fusion_type", type=str, default="text_only", choices=["concatenate", "subtraction", "addition", "text_only"], help="Type of fusion method")
     parser.add_argument("--batch_size", type=int, default=1024, help="Batch size for training")
-    parser.add_argument("--input_size", type=int, default=224, help="Input image size")
     parser.add_argument("--learning_rate", type=float, default=5e-2, help="Learning rate")
     parser.add_argument("--patience", type=int, default=100, help="Early stopping patience")
     parser.add_argument("--epochs", type=int, default=800, help="Number of training epochs")
     parser.add_argument("--prediction_threshold", type=float, default=0.5, help="Threshold for binary classification")
-    parser.add_argument("--model", type=str, default="r50_mcc.tar", help="pretrained model checkpoint file name")
+    parser.add_argument("--model", type=str, default="mgca_resnet_50.ckpt", help="pretrained model checkpoint file name")
 
     return parser.parse_args()
 
@@ -207,7 +206,7 @@ if __name__ == '__main__':
     FEW_SHOT = args.few_shot
     FUSION_TYPE = args.fusion_type
     BATCH_SIZE = args.batch_size
-    INPUT_SIZE = args.input_size
+    
     LEARNING_RATE = args.learning_rate
     PATIENCE = args.patience
     EPOCHS = args.epochs
@@ -215,6 +214,8 @@ if __name__ == '__main__':
     MODEL_CHECKPOINT_NAME = args.model
     IS_TEXT_ONLY_EVALUATION = True if args.fusion_type =='text_only' else False
     EXPERIMENT_MODEL = None
+    INPUT_SIZE = None
+    TEXT_TRUNCATION = None
 
     print("Script Parameters:")
     print(f"  FEW_SHOT: {FEW_SHOT}")
@@ -228,16 +229,11 @@ if __name__ == '__main__':
     print(f"  EXPERIMENT_MODEL: {EXPERIMENT_MODEL}")
 
     if MODEL_CHECKPOINT_NAME in ['r50_mcc.tar', 'r50_mc.tar', 'r50_m.tar']:
-        cxrclip = cxrclip_model(
+        vlm = cxrclip_model(
             f'/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Image-Encoder/{MODEL_CHECKPOINT_NAME}', 
             '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/', 
             '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/'
             )
-        image_encoder = cxrclip.image_encoder
-        image_projector = cxrclip.image_projection
-        text_encoder = cxrclip.text_encoder
-        text_projector = cxrclip.text_projection
-        tokenizer = cxrclip.tokenizer
 
         if MODEL_CHECKPOINT_NAME == 'r50_mcc.tar':
             EXPERIMENT_MODEL = 'cxrclip_r50mcc'
@@ -247,8 +243,30 @@ if __name__ == '__main__':
             EXPERIMENT_MODEL = 'cxrclip_r50m'
         else:
             assert False
+
+        INPUT_SIZE = 224
+        TEXT_TRUNCATION = 256
+        mean = [0.485, 0.456, 0.406]
+        std = [0.229, 0.224, 0.225]
+    elif MODEL_CHECKPOINT_NAME == 'mgca_resnet_50.ckpt':
+        vlm = mgca_model(
+            f'/cluster/projects/mcintoshgroup/publicData/fine-grain/MGCA-Image-Encoder/{MODEL_CHECKPOINT_NAME}', 
+            '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/', 
+            '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/'
+        )
+        INPUT_SIZE = 224
+        TEXT_TRUNCATION = 256 # default setting for mgca is 112 but we need to verify report.
+        mean = [0.5, 0.5, 0.5]
+        std = [0.5, 0.5, 0.5]
+
     print(f"  EXPERIMENT_MODEL: {EXPERIMENT_MODEL}")
 
+
+    image_encoder = vlm.image_encoder
+    image_projector = vlm.image_projection
+    text_encoder = vlm.text_encoder
+    text_projector = vlm.text_projection
+    tokenizer = vlm.tokenizer
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     image_encoder.to(device)
     image_projector.to(device)
@@ -264,8 +282,7 @@ if __name__ == '__main__':
     transform = Compose([
         Resize((INPUT_SIZE, INPUT_SIZE)),
         ToTensor(),
-        Normalize(mean=[0.485, 0.456, 0.406],
-                  std=[0.229, 0.224, 0.225])
+        Normalize(mean=mean, std=std)
     ])
     train_dataset = get_dataset('report', 'train', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/rexerr_train.pkl')
     val_dataset = get_dataset('report', 'val', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/rexerr_val.pkl')
