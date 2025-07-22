@@ -254,9 +254,10 @@ if __name__ == '__main__':
             '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/', 
             '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/'
         )
+        # TODO: double check the followings
         INPUT_SIZE = 224
-        TEXT_TRUNCATION = 256 # default setting for mgca is 112 but we need to verify report.
-        mean = [0.5, 0.5, 0.5]
+        TEXT_TRUNCATION = 256
+        mean = [0.5, 0.5, 0.5] 
         std = [0.5, 0.5, 0.5]
 
     print(f"  EXPERIMENT_MODEL: {EXPERIMENT_MODEL}")
