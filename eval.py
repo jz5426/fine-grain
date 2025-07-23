@@ -11,6 +11,7 @@ from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 import torch.nn.functional as F
 from tqdm import tqdm
 import numpy as np
+from sklearn.metrics import average_precision_score
 
 from vlm_models import cxrclip_model, LinearProjectionHead, mgca_model
 from preprocess_data import RexErrDataset
@@ -277,6 +278,8 @@ if __name__ == '__main__':
     print(f"  EXPERIMENT_MODEL: {EXPERIMENT_MODEL}")
     print(f"  MODEL_NAME: {MODEL_NAME}")
     print(f"  CACHE_PARENT_DIR: {CACHE_PARENT_DIR}")
+    print(f"  mean: {mean}")
+    print(f"  std: {std}")
 
     image_encoder = vlm.image_encoder
     image_projector = vlm.image_projection
@@ -432,7 +435,8 @@ if __name__ == '__main__':
     classifier.eval()
     test_dataset = TensorDataset(test_feats, test_y)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
-    all_preds, all_labels = [], []
+    all_probs, all_preds, all_labels = [], [], []
+
     with torch.no_grad():
         for batch_x, batch_y in test_loader:
             batch_x = batch_x.to(device)
@@ -443,16 +447,23 @@ if __name__ == '__main__':
             test_preds = (test_probs >= PREDICTION_THRESHOLD).astype(int)
             test_labels = batch_y.cpu().numpy()  # <-- fix: use batch_y, not test_y
 
+            all_probs.extend(test_probs)
             all_preds.extend(test_preds)
             all_labels.extend(test_labels)
 
         # Convert to NumPy arrays
+        all_probs = np.array(all_probs)
         all_preds = np.array(all_preds)
         all_labels = np.array(all_labels)
 
         # Compute accuracy
         accuracy = (all_preds == all_labels).mean()
+
+        # Compute PRAUC
+        prauc = average_precision_score(all_labels, all_probs)
+
         print(f"Test Accuracy: {accuracy:.4f}")
+        print(f"Test PRAUC: {prauc:.4f}")
 
     # -------------------------
     # save results to spreadsheet
@@ -469,7 +480,8 @@ if __name__ == '__main__':
         "patience": PATIENCE,
         "epochs": EPOCHS,
         "prediction_threshold": PREDICTION_THRESHOLD,
-        "test_accuracy": accuracy
+        "test_accuracy": accuracy,
+        "pr_auc": prauc
     }
 
     # Convert to a DataFrame
