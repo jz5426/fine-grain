@@ -264,8 +264,6 @@ if __name__ == '__main__':
         mean = [0.485, 0.456, 0.406]
         std = [0.229, 0.224, 0.225]
     elif MODEL_CHECKPOINT_NAME == 'mgca_resnet_50.ckpt':
-        # assert False
-        # NOTE: this model cannot do retrieval task => not able to feed in the whole report to get the embeddings.
         vlm = mgca_model(
             f'/cluster/projects/mcintoshgroup/publicData/fine-grain/MGCA-Image-Encoder/{MODEL_CHECKPOINT_NAME}', 
             '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/', 
