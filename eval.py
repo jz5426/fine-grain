@@ -87,7 +87,7 @@ def encode_dataset(dataloader, models, pickle_dest):
             img_feats = image_projector(img_feats)    # apply projector: shape: [N, D']
 
             # Encode original text
-            inputs = tokenizer(origin_text, return_tensors="pt", padding=True, truncation=True, max_length=256).to(device) # TODO:
+            inputs = tokenizer(origin_text, return_tensors="pt", padding=True, truncation=True, max_length=256).to(device) # TODO: make max_length as parameter
             if model_name == 'cxrclip':
                 origin_txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token
             elif model_name == 'mgca':
@@ -96,7 +96,7 @@ def encode_dataset(dataloader, models, pickle_dest):
             origin_txt_feats = text_projector(origin_txt_feats)
 
             # Encoder error text
-            inputs = tokenizer(err_text, return_tensors="pt", padding=True, truncation=True, max_length=256).to(device) # TODO:
+            inputs = tokenizer(err_text, return_tensors="pt", padding=True, truncation=True, max_length=256).to(device) # TODO: make max_length as parameter
             if model_name == 'cxrclip':
                 err_txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token
             elif model_name == 'mgca':
@@ -232,12 +232,10 @@ if __name__ == '__main__':
     print(f"  FEW_SHOT: {FEW_SHOT}")
     print(f"  FUSION_TYPE: {FUSION_TYPE}")
     print(f"  BATCH_SIZE: {BATCH_SIZE}")
-    print(f"  INPUT_SIZE: {INPUT_SIZE}")
     print(f"  LEARNING_RATE: {LEARNING_RATE}")
     print(f"  PATIENCE: {PATIENCE}")
     print(f"  EPOCHS: {EPOCHS}")
     print(f"  PREDICTION_THRESHOLD: {PREDICTION_THRESHOLD}")
-    print(f"  EXPERIMENT_MODEL: {EXPERIMENT_MODEL}")
 
     if MODEL_CHECKPOINT_NAME in ['r50_mcc.tar', 'r50_mc.tar', 'r50_m.tar']:
         vlm = cxrclip_model(
@@ -275,7 +273,10 @@ if __name__ == '__main__':
         mean = [0.5, 0.5, 0.5] 
         std = [0.5, 0.5, 0.5]
 
+    print(f"  INPUT_SIZE: {INPUT_SIZE}")
     print(f"  EXPERIMENT_MODEL: {EXPERIMENT_MODEL}")
+    print(f"  MODEL_NAME: {MODEL_NAME}")
+    print(f"  CACHE_PARENT_DIR: {CACHE_PARENT_DIR}")
 
     image_encoder = vlm.image_encoder
     image_projector = vlm.image_projection
