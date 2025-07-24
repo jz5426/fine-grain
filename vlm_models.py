@@ -4,7 +4,7 @@ neural network models are here.
 define all the vision language model here
 
 """
-from transformers import AutoTokenizer, AutoModel, SwinModel
+from transformers import AutoTokenizer, AutoModel
 from torch import nn
 import torch
 import warnings

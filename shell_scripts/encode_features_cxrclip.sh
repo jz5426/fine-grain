@@ -13,4 +13,4 @@
 
 source activate ctclip
 
-python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_m.tar
+python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_m.tar --batch_size 512 --text_max_length 512

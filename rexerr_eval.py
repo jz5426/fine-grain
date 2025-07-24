@@ -201,13 +201,13 @@ def parse_args():
 
     parser.add_argument("--few_shot", type=float, default=0.01, help="Few-shot learning ratio")
     parser.add_argument("--fusion_type", type=str, default="text_only", choices=["concatenate", "subtraction", "addition", "text_only"], help="Type of fusion method")
-    parser.add_argument("--batch_size", type=int, default=1024, help="Batch size for training")
+    parser.add_argument("--batch_size", type=int, default=2, help="Batch size for training")
     parser.add_argument("--learning_rate", type=float, default=5e-2, help="Learning rate")
     parser.add_argument("--patience", type=int, default=100, help="Early stopping patience") # 100
     parser.add_argument("--epochs", type=int, default=800, help="Number of training epochs") # 800
     parser.add_argument("--prediction_threshold", type=float, default=0.5, help="Threshold for binary classification")
     parser.add_argument("--model", type=str, default="mgca_resnet_50.ckpt", help="pretrained model checkpoint file name")
-    parser.add_argument("--text_max_length", type=int, default=256, help="maximum number of tokens")
+    parser.add_argument("--text_max_length", type=int, default=1024, help="maximum number of tokens")
 
     return parser.parse_args()
 
@@ -224,10 +224,9 @@ if __name__ == '__main__':
     PREDICTION_THRESHOLD = args.prediction_threshold
     MODEL_CHECKPOINT_NAME = args.model
     IS_TEXT_ONLY_EVALUATION = True if args.fusion_type =='text_only' else False
-    TOKEN_MAX_LENGTH = args.text_max_length
+    TEXT_TRUNCATION = args.text_max_length
     EXPERIMENT_MODEL = None
     INPUT_SIZE = None
-    TEXT_TRUNCATION = None
     CACHE_PARENT_DIR = None
     MODEL_NAME = None
 
@@ -239,7 +238,7 @@ if __name__ == '__main__':
     print(f"  PATIENCE: {PATIENCE}")
     print(f"  EPOCHS: {EPOCHS}")
     print(f"  PREDICTION_THRESHOLD: {PREDICTION_THRESHOLD}")
-    print(f"  TOKEN_MAX_LENGTH: {TOKEN_MAX_LENGTH}")
+    print(f"  TEXT_TRUNCATION: {TEXT_TRUNCATION}")
 
 
     if MODEL_CHECKPOINT_NAME in ['r50_mcc.tar', 'r50_mc.tar', 'r50_m.tar']:
@@ -258,7 +257,7 @@ if __name__ == '__main__':
             assert False
 
         INPUT_SIZE = 224
-        TEXT_TRUNCATION = 256
+        # TEXT_TRUNCATION = 256
         MODEL_NAME = 'cxrclip'
         CACHE_PARENT_DIR = 'cxrclip_encoder_features'
         mean = [0.485, 0.456, 0.406]
@@ -271,7 +270,7 @@ if __name__ == '__main__':
         )
         EXPERIMENT_MODEL = 'mgca_res50'
         INPUT_SIZE = 224
-        TEXT_TRUNCATION = 256
+        # TEXT_TRUNCATION = 256
         MODEL_NAME = 'mgca'
         CACHE_PARENT_DIR = 'mgca_encoder_features'
         mean = [0.5, 0.5, 0.5] 
@@ -306,9 +305,9 @@ if __name__ == '__main__':
         ToTensor(),
         Normalize(mean=mean, std=std)
     ])
-    train_dataset = get_dataset('report', 'train', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/rexerr_train.pkl')
-    val_dataset = get_dataset('report', 'val', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/rexerr_val.pkl')
-    test_dataset = get_dataset('report', 'test', False, transform, '/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/rexerr_test.pkl')
+    train_dataset = get_dataset('report', 'train', False, transform, f'/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/rexerr_train.pkl')
+    val_dataset = get_dataset('report', 'val', False, transform, f'/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/rexerr_val.pkl')
+    test_dataset = get_dataset('report', 'test', False, transform, f'/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/rexerr_test.pkl')
 
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
@@ -327,22 +326,22 @@ if __name__ == '__main__':
     train_gt, train_err = encode_dataset(
         train_loader, 
         models, 
-        pickle_dest=f'/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/{CACHE_PARENT_DIR}/train_features.joblib', 
-        tokens_max_length=TOKEN_MAX_LENGTH)
+        pickle_dest=f'/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/{CACHE_PARENT_DIR}_{TEXT_TRUNCATION}/train_features.joblib', 
+        tokens_max_length=TEXT_TRUNCATION)
     
     print("Encoding val set...")
     val_gt, val_err = encode_dataset(
         val_loader, 
         models, 
-        pickle_dest=f'/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/{CACHE_PARENT_DIR}/val_features.joblib',
-        tokens_max_length=TOKEN_MAX_LENGTH)
+        pickle_dest=f'/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/{CACHE_PARENT_DIR}_{TEXT_TRUNCATION}/val_features.joblib',
+        tokens_max_length=TEXT_TRUNCATION)
 
     print("Encoding test set...")
     test_gt, test_err = encode_dataset(
         test_loader, 
         models, 
-        pickle_dest=f'/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/{CACHE_PARENT_DIR}/test_features.joblib',
-        tokens_max_length=TOKEN_MAX_LENGTH)
+        pickle_dest=f'/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/{CACHE_PARENT_DIR}_{TEXT_TRUNCATION}/test_features.joblib',
+        tokens_max_length=TEXT_TRUNCATION)
 
     # -------------------------
     # Few-shot sampling (by %) and combine the tensors
@@ -495,7 +494,7 @@ if __name__ == '__main__':
         "patience": PATIENCE,
         "epochs": EPOCHS,
         "prediction_threshold": PREDICTION_THRESHOLD,
-        "text_max_length": TOKEN_MAX_LENGTH,
+        "text_max_length": TEXT_TRUNCATION,
         "test_accuracy": accuracy,
         "pr_auc": prauc
     }

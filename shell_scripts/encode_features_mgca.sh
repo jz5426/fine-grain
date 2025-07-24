@@ -13,4 +13,4 @@
 
 source activate ctclip
 
-python /cluster/home/t135419uhn/fine-grain/eval.py --model mgca_resnet_50.ckpt --batch_size 512
+python /cluster/home/t135419uhn/fine-grain/eval.py --model mgca_resnet_50.ckpt --batch_size 256 --text_max_length 512
