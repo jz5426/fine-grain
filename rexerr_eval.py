@@ -7,14 +7,14 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-from torchvision.transforms import Compose, Resize, ToTensor, Normalize
+from torchvision.transforms import Compose, Resize, ToTensor, Normalize, CenterCrop
 import torch.nn.functional as F
 from tqdm import tqdm
 import numpy as np
 from sklearn.metrics import average_precision_score
 
 from vlm_models import cxrclip_model, LinearProjectionHead, mgca_model
-from preprocess_data import RexErrDataset
+from preprocess_rexerr import RexErrDataset
 
 import os
 import pickle
@@ -262,6 +262,12 @@ if __name__ == '__main__':
         CACHE_PARENT_DIR = 'cxrclip_encoder_features'
         mean = [0.485, 0.456, 0.406]
         std = [0.229, 0.224, 0.225]
+        transform = Compose([
+            Resize((INPUT_SIZE, INPUT_SIZE)),
+            CenterCrop((INPUT_SIZE, INPUT_SIZE)),
+            ToTensor(),
+            Normalize(mean=mean, std=std)
+        ])
     elif MODEL_CHECKPOINT_NAME == 'mgca_resnet_50.ckpt':
         vlm = mgca_model(
             f'/cluster/projects/mcintoshgroup/publicData/fine-grain/MGCA-Image-Encoder/{MODEL_CHECKPOINT_NAME}', 
@@ -275,6 +281,11 @@ if __name__ == '__main__':
         CACHE_PARENT_DIR = 'mgca_encoder_features'
         mean = [0.5, 0.5, 0.5] 
         std = [0.5, 0.5, 0.5]
+        transform = Compose([
+            CenterCrop((INPUT_SIZE, INPUT_SIZE)),
+            ToTensor(),
+            Normalize(mean=mean, std=std)
+        ])
 
     print(f"  INPUT_SIZE: {INPUT_SIZE}")
     print(f"  EXPERIMENT_MODEL: {EXPERIMENT_MODEL}")
