@@ -170,19 +170,21 @@ def train_classifier(train_x_tensor, train_y_tensor, val_x_tensor, val_y_tensor,
 
     classifier.load_state_dict(best_state)
 
+def str2bool(v):
+    return v.lower() in ('true', '1', 'yes')
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Training script with configurable parameters")
 
-    parser.add_argument("--batch_size", type=int, default=128, help="Batch size for training")
+    parser.add_argument("--batch_size", type=int, default=512, help="Batch size for training")
     parser.add_argument("--learning_rate", type=float, default=5e-2, help="Learning rate")
     parser.add_argument("--patience", type=int, default=100, help="Early stopping patience") # 100
     parser.add_argument("--epochs", type=int, default=800, help="Number of training epochs") # 800
     parser.add_argument("--prediction_threshold", type=float, default=0.5, help="Threshold for binary classification")
     parser.add_argument("--model", type=str, default="mgca_resnet_50.ckpt", help="pretrained model checkpoint file name")
-    parser.add_argument("--encode_data_only", type=bool, default=False, help="is encode data only")
-    parser.add_argument("--verify_data_path", type=bool, default=False, help="verify data paths")
-    parser.add_argument("--mask_uncertain_labels", type=bool, default=True, help="mask chestpert labels (-1)")
-
+    parser.add_argument("--encode_data_only", type=str2bool, default=False, help="is encode data only")
+    parser.add_argument("--verify_data_path", type=str2bool, default=False, help="verify data paths")
+    parser.add_argument("--mask_uncertain_labels", type=str2bool, default=True, help="mask chestpert labels (-1)")
     return parser.parse_args()
 
 def main():
