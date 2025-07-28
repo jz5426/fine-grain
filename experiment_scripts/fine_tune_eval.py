@@ -9,8 +9,8 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import average_precision_score
 
 from preprocess_mimic_cxr_jpg import MIMICCXRConfig, MIMICCXRDataloader
-from vlm_models import cxrclip_model, LinearProjectionHead, mgca_model
-from preprocess_rexerr import RexErrDataset
+from models.vlm_models import cxrclip_model, LinearProjectionHead, mgca_model
+from preprocess_rexerr import RexErrDataloader
 
 import os
 import pickle
@@ -30,7 +30,7 @@ def get_dataloader(level, split, study_level_sampling, transform, cached_file_pa
             dataset = pickle.load(f)
         return dataset
 
-    dataset = RexErrDataset(
+    dataset = RexErrDataloader(
         f'/cluster/projects/mcintoshgroup/publicData/rexerr-v1/ReXErr-{level}-level/ReXErr-{level}-level_{split}.csv',
         '/cluster/projects/mcintoshgroup/publicData/MIMIC-CXR/MIMIC-CXR-JPG',
         study_level_sampling=study_level_sampling,

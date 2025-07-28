@@ -1,7 +1,5 @@
 """
-neural network models are here.
-
-define all the vision language model here
+VLM models
 
 """
 from transformers import AutoTokenizer, AutoModel
@@ -108,10 +106,7 @@ class medclip_model(vlm_model):
 
 class mgca_model(vlm_model):
     def __init__(self, image_encoder_path, text_encoder_path, tokenizer_path):
-        # text_encoder_path = '/cluster/projects/mcintoshgroup/publicData/fine-grain/MGCA-Text-Encoder/models--emilyalsentzer--Bio_ClinicalBERT/snapshots/d5892b39a4adaed74b92212a44081509db72f87b'
-        # tokenizer path = '/cluster/projects/mcintoshgroup/publicData/fine-grain/CXR-CLIP-Text-Encoder/'
         image_encoder, image_projection_head, text_encoder, text_projection_head, tokenizer = self.load_mgca_encoder(image_encoder_path, text_encoder_path, tokenizer_path)
-
         super().__init__(image_encoder, image_projection_head, text_encoder, text_projection_head, tokenizer)
 
     def load_mgca_encoder(self, image_encoder_path, text_encoder_path, tokenizer_path):

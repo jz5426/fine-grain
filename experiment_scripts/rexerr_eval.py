@@ -13,8 +13,8 @@ from tqdm import tqdm
 import numpy as np
 from sklearn.metrics import average_precision_score
 
-from vlm_models import cxrclip_model, LinearProjectionHead, mgca_model
-from preprocess_rexerr import RexErrDataset
+from models.vlm_models import cxrclip_model, LinearProjectionHead, mgca_model
+from preprocess_rexerr import RexErrDataloader
 
 import os
 import pickle
@@ -35,7 +35,7 @@ def get_dataset(level, split, study_level_sampling, transform, cached_file_path)
             dataset = pickle.load(f)
         return dataset
 
-    dataset = RexErrDataset(
+    dataset = RexErrDataloader(
         f'/cluster/projects/mcintoshgroup/publicData/rexerr-v1/ReXErr-{level}-level/ReXErr-{level}-level_{split}.csv',
         '/cluster/projects/mcintoshgroup/publicData/MIMIC-CXR/MIMIC-CXR-JPG',
         study_level_sampling=study_level_sampling,

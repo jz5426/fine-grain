@@ -20,7 +20,7 @@ import random
 from PIL import Image
 from torch.utils.data import Dataset
 
-class RexErrDataset(Dataset):
+class RexErrDataloader(Dataset):
     def __init__(self, rexerr_path, mimic_cxr_jpg_path, transform, study_level_sampling=True):
         self.rexerr_path = rexerr_path
         self.mimic_cxr_jpg_path = mimic_cxr_jpg_path
