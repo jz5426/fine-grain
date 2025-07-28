@@ -87,9 +87,9 @@ def encode_dataset(dataloader, models, pickle_dest, device):
                     'label': labels[i].cpu()
                 }))
             
-            #NOTE: temporary for testing
-            if len(encoded_data) >= 128:
-                return encoded_data
+            # #NOTE: temporary for testing
+            # if len(encoded_data) >= 128:
+            #     return encoded_data
 
     # Ensure the parent directories exist
     os.makedirs(os.path.dirname(pickle_dest), exist_ok=True)
