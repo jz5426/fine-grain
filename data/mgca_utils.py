@@ -10,11 +10,9 @@ reports_path = MIMIC_CXR_DATA_DIR / "files"
 output_path = MIMIC_CXR_DATA_DIR
 no_split = True
 
-
 def list_rindex(l, s):
     """Helper function: *last* matching element in a list"""
     return len(l) - l[-1::-1].index(s) - 1
-
 
 def extract_mimic_text():
     custom_section_names, custom_indices = custom_mimic_cxr_rules()

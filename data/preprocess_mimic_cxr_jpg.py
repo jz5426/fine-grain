@@ -136,7 +136,7 @@ class MIMICCXRDataloader(Dataset):
 
         return meta
 
-def main():
+def preprocess_mimic_csv_files():
     extract_text = False
     np.random.seed(42)
     if extract_text:
@@ -156,6 +156,7 @@ def main():
     split_df = pd.read_csv(MIMIC_CXR_SPLIT_CSV)
     split_df = split_df.astype(str)
     split_df["study_id"] = split_df["study_id"].apply(lambda x: "s"+x)
+
     # TODO: merge validate and test into test.
     split_df["split"] = split_df["split"].apply(
         lambda x: "valid" if x == "validate" or x == "test" else x)
