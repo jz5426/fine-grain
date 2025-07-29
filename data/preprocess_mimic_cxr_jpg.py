@@ -49,8 +49,8 @@ class MIMICCXRDataloader(Dataset):
     def __init__(self, cfg: MIMICCXRConfig, tokenizer, split: SplitT = "train"):
 
         self.cfg = cfg
-        self.split = "validate" if split == "val" else split
-        assert self.split in {"train", "validate", "test"}, f"Invalid split: {split}"
+        self.split = "valid" if split == "val" else split
+        assert self.split in {"train", "valid", "test"}, f"Invalid split: {split}"
 
         # Load metadata and split
         metadata = pd.read_csv(cfg.metadata_csv, compression="infer")
@@ -99,7 +99,13 @@ class MIMICCXRDataloader(Dataset):
         # TODO: should be unique for each method.
         # curate the master.csv file once
         self.master_df = self.preprocess_mimic_csv_files()
-        self.filenames, self.path2sent = self.load_text_data(split)
+        self.filenames, self.path2sent = self.load_text_data(self.split)
+
+        # get the metadatadf as dictionary
+        self.metadata_dict = {
+            row['path']: row for _, row in df.iterrows()
+        }
+
 
     def _load_image_paths(self, filelist_path: str) -> Dict[str, str]:
         id2path = {}
@@ -128,7 +134,7 @@ class MIMICCXRDataloader(Dataset):
         return id2path
 
     def __len__(self) -> int:
-        return len(self.metadata_df)
+        return len(self.filenames)
 
     def __getitem__(self, idx: int):
         path = self.filenames[idx]
@@ -144,10 +150,11 @@ class MIMICCXRDataloader(Dataset):
         caps, cap_len = self.get_caption(path)
         # example call:  text_encoder(**caps).last_hidden_state[:, 0, :] 
 
+        row = self.metadata_dict[path]
         meta = {
-            # "dicom_id": row["dicom_id"],
-            # "study_id": row.get("study_id"),
-            # "subject_id": row.get("subject_id"),
+            "dicom_id": row["dicom_id"],
+            "study_id": row.get("study_id"),
+            "subject_id": row.get("subject_id"),
             "path": path,
             "image": img,
             "target": target,

@@ -92,7 +92,7 @@ def encode_dataset(dataloader, models, pickle_dest, tokens_max_length=256):
             if model_name == 'cxrclip':
                 origin_txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token
             elif model_name == 'mgca':
-                origin_txt_feats, word_feat_q, word_attn_q, sents = text_encoder(inputs['input_ids'], inputs['token_type_ids'], inputs['attention_mask'])
+                origin_txt_feats, word_feat_q, word_attn_q, sents = text_encoder(inputs['input_ids'], inputs['attention_mask'], inputs['token_type_ids'])
 
             origin_txt_feats = text_projector(origin_txt_feats)
 
@@ -101,7 +101,7 @@ def encode_dataset(dataloader, models, pickle_dest, tokens_max_length=256):
             if model_name == 'cxrclip':
                 err_txt_feats = text_encoder(**inputs).last_hidden_state[:, 0, :]  # CLS token
             elif model_name == 'mgca':
-                err_txt_feats, word_feat_q, word_attn_q, sents = text_encoder(inputs['input_ids'], inputs['token_type_ids'], inputs['attention_mask'])
+                err_txt_feats, word_feat_q, word_attn_q, sents = text_encoder(inputs['input_ids'], inputs['attention_mask'], inputs['token_type_ids'],)
             
             err_txt_feats = text_projector(err_txt_feats)
 

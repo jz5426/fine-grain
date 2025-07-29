@@ -64,7 +64,9 @@ def encode_dataset(dataloader, models, pickle_dest, device):
             print("[ERROR] Failed to load object.")
 
     image_encoder = models['image_encoder']
+    text_encoder = models['text_encoder']
     image_projector = models['image_projector']
+    text_projector = models['text_projector']
     encoded_data = []
 
     with torch.no_grad():
@@ -73,19 +75,36 @@ def encode_dataset(dataloader, models, pickle_dest, device):
             tensor_images = batch['image']
             study_id = batch['study_id'] # key of the results
             labels = batch['target']
+            token_caption = batch['caption']
 
-            # Encode and project the image featuress
+            # TODO: currently only support MGCA model, not CXR
+
             tensor_images = tensor_images.to(device)
+            token_caption = token_caption.to(device)
+
+            # Encode and project the image features
             img_feats = image_encoder(tensor_images)  # shape: [N, D]
             img_feats = image_projector(img_feats)    # apply projector: shape: [N, D']
 
+            # Encode and project caption features
+            # TODO: this is wrong
+            report_feat, word_feat, last_atten_pt, sents = text_encoder(
+                token_caption['input_ids'].squeeze(), 
+                token_caption['attention_mask'].squeeze(),
+                token_caption['token_type_ids'].squeeze()
+                )
+            # NOTE: check line 98 of mgca_module in the original repo => report_feat is the global embedding tensor
+            caption_feats = text_projector(report_feat)
+
             # normalize the feature vectors
             img_feats = l2norm(img_feats)
+            caption_feats = l2norm(caption_feats)
 
             # individual feature/study as a dictionary in the dict
             for i, _id in enumerate(study_id):
                 encoded_data.append(SimpleNamespace(**{
                     'study_id': _id,
+                    'caption_feats': caption_feats[i].cpu(),
                     'image_feats': img_feats[i].cpu(), # [512]
                     'label': labels[i].cpu()
                 }))
