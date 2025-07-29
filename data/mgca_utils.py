@@ -4,10 +4,10 @@ import re
 
 from tqdm import tqdm
 
-from mgca_constants import MIMIC_CXR_DATA_DIR
+from data.mgca_constants import MIMIC_CXR_DATA_DIR, MIMIC_CXR_METADATA_DIR
 
-reports_path = MIMIC_CXR_DATA_DIR / "files"
-output_path = MIMIC_CXR_DATA_DIR
+reports_path = MIMIC_CXR_DATA_DIR / "MIMIC-CXR/physionet.org/files/mimic-cxr/2.0.0/files"
+output_path = MIMIC_CXR_METADATA_DIR
 no_split = True
 
 def list_rindex(l, s):

@@ -2,14 +2,18 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional, Literal, Dict
-
+from nltk.tokenize import RegexpTokenizer
+import pickle
 import pandas as pd
 import torch
 import numpy as np
 from torch.utils.data import Dataset
 from PIL import Image
-from mgca_constants import *
-from mgca_utils import extract_mimic_text
+from data.mgca_constants import *
+from data.mgca_utils import extract_mimic_text
+from tqdm import tqdm
+import re
+
 
 SplitT = Literal["train", "validate", "val", "test"]
 
@@ -18,7 +22,8 @@ class MIMICCXRConfig:
     root: str                                   # root directory that contains the "files/" tree
     metadata_csv: str                           # path to mimic-cxr-2.0.0-metadata.csv.gz
     split_csv: str                              # path to mimic-cxr-2.0.0-split.csv.gz
-    image_filenames_txt: str                    # path to IMAGE_FILENAMES
+    image_filenames_txt: str    
+    caption_max_len: int                # path to IMAGE_FILENAMES
     label_col: Optional[str] = None             # if None -> multi-label CheXpert; else single-label categorical
     chexpert_csv: Optional[str] = None          # path to mimic-cxr-2.0.0-chexpert.csv.gz for multi-label
     transform: Optional[Callable] = None
@@ -26,6 +31,7 @@ class MIMICCXRConfig:
     drop_missing_labels: bool = True
     verify_data_path: bool = False
     mask_uncertain_labels: bool = False
+    override_master_csv: bool = False
 
 class MIMICCXRDataloader(Dataset):
     """
@@ -40,7 +46,8 @@ class MIMICCXRDataloader(Dataset):
         "Pneumothorax", "Pleural Other", "Support Devices", "No Finding"
     ]
 
-    def __init__(self, cfg: MIMICCXRConfig, split: SplitT = "train"):
+    def __init__(self, cfg: MIMICCXRConfig, tokenizer, split: SplitT = "train"):
+
         self.cfg = cfg
         self.split = "validate" if split == "val" else split
         assert self.split in {"train", "validate", "test"}, f"Invalid split: {split}"
@@ -82,9 +89,17 @@ class MIMICCXRDataloader(Dataset):
         self.targets = df[label_cols].to_numpy(dtype="float32")
         self.label_cols = label_cols
 
-        self.df = df.reset_index(drop=True)
+        self.metadata_df = df.reset_index(drop=True)
         self.transform = cfg.transform
         self.target_transform = cfg.target_transform
+
+        self.tokenizer = tokenizer
+
+        # NOTE: the following are the processes for the MGCA Mmodel
+        # TODO: should be unique for each method.
+        # curate the master.csv file once
+        self.master_df = self.preprocess_mimic_csv_files()
+        self.filenames, self.path2sent = self.load_text_data(split)
 
     def _load_image_paths(self, filelist_path: str) -> Dict[str, str]:
         id2path = {}
@@ -113,11 +128,11 @@ class MIMICCXRDataloader(Dataset):
         return id2path
 
     def __len__(self) -> int:
-        return len(self.df)
+        return len(self.metadata_df)
 
     def __getitem__(self, idx: int):
-        row = self.df.iloc[idx]
-        img = Image.open(row["path"]).convert("RGB")
+        path = self.filenames[idx]
+        img = Image.open(path).convert("RGB")
         target = torch.from_numpy(self.targets[idx])  # float32 tensor of shape (14,)
 
         if self.transform:
@@ -125,83 +140,208 @@ class MIMICCXRDataloader(Dataset):
         if self.target_transform:
             target = self.target_transform(target)
 
+        # get the text/caption
+        caps, cap_len = self.get_caption(path)
+        # example call:  text_encoder(**caps).last_hidden_state[:, 0, :] 
+
         meta = {
-            "dicom_id": row["dicom_id"],
-            "study_id": row.get("study_id"),
-            "subject_id": row.get("subject_id"),
-            "path": row["path"],
+            # "dicom_id": row["dicom_id"],
+            # "study_id": row.get("study_id"),
+            # "subject_id": row.get("subject_id"),
+            "path": path,
             "image": img,
-            "target": target
+            "target": target,
+            "caption": caps,
+            "caption_len": cap_len
         }
 
         return meta
 
-def preprocess_mimic_csv_files():
-    extract_text = False
-    np.random.seed(42)
-    if extract_text:
-        extract_mimic_text()
-    metadata_df = pd.read_csv(MIMIC_CXR_META_CSV)
-    metadata_df = metadata_df[["dicom_id", "subject_id",
-                               "study_id", "ViewPosition"]].astype(str)
-    metadata_df["study_id"] = metadata_df["study_id"].apply(lambda x: "s"+x)
-    # Only keep frontal images
-    metadata_df = metadata_df[metadata_df["ViewPosition"].isin(["PA", "AP"])]
+    # NOTE: the following are implementations for MGCA
 
-    text_df = pd.read_csv(MIMIC_CXR_TEXT_CSV)
-    text_df.dropna(subset=["impression", "findings"], how="all", inplace=True)
-    text_df = text_df[["study", "impression", "findings"]]
-    text_df.rename(columns={"study": "study_id"}, inplace=True)
 
-    split_df = pd.read_csv(MIMIC_CXR_SPLIT_CSV)
-    split_df = split_df.astype(str)
-    split_df["study_id"] = split_df["study_id"].apply(lambda x: "s"+x)
+    def load_text_data(self, split):
+        print('Get study to captions mapping...')
+        filepath = os.path.join(
+            MIMIC_CXR_METADATA_DIR, "captions.pickle")
+        if not os.path.isfile(filepath):
+            print(
+                f"Caption file {filepath} does not exit. Creating captions...")
+            path2sent = self.create_path_2_sent_mapping()
+            with open(filepath, "wb") as f:
+                pickle.dump(path2sent, f, protocol=2)
+                print("Save to: ", filepath)
+        else:
+            with open(filepath, "rb") as f:
+                path2sent = pickle.load(f)
 
-    # TODO: merge validate and test into test.
-    split_df["split"] = split_df["split"].apply(
-        lambda x: "valid" if x == "validate" or x == "test" else x)
+        # filter studies to use for current split
+        filenames = []
+        for row in self.master_df.itertuples():
+            cur_split = getattr(row, MIMIC_CXR_SPLIT_COL)
+            path = getattr(row, MIMIC_CXR_PATH_COL)
+            if cur_split == split and path in path2sent:
+                filenames.append(path)
 
-    chexpert_df = pd.read_csv(MIMIC_CXR_CHEXPERT_CSV)
-    chexpert_df[["subject_id", "study_id"]] = chexpert_df[[
-        "subject_id", "study_id"]].astype(str)
-    chexpert_df["study_id"] = chexpert_df["study_id"].apply(lambda x: "s"+x)
+        return filenames, path2sent
 
-    master_df = pd.merge(metadata_df, text_df, on="study_id", how="left")
-    master_df = pd.merge(master_df, split_df, on=["dicom_id", "subject_id", "study_id"], how="inner")
-    master_df.dropna(subset=["impression", "findings"], how="all", inplace=True)
-    
-    n = len(master_df)
-    master_data = master_df.values
+    def create_path_2_sent_mapping(self):
+        sent_lens, num_sents = [], []
+        path2sent = {}
+        # iterrows is not faster than itertuples ...  but it is ok
+        for _, row in tqdm(self.master_df.iterrows(), total=self.master_df.shape[0]):
+            # pick impression, findings, last_paragraph
+            captions = ""
+            captions += row["impression"]
+            captions += " "
+            captions += row["findings"]
 
-    root_dir = str(MIMIC_CXR_DATA_DIR).split("/")[-1] + "/files"
-    path_list = []
-    for i in range(n):
-        row = master_data[i]
-        file_path = "%s/p%s/p%s/%s/%s.jpg" % (root_dir, str(
-            row[1])[:2], str(row[1]), str(row[2]), str(row[0]))
-        path_list.append(file_path)
+            # use space instead of newline
+            captions = captions.replace("\n", " ")
+
+            # split sentences
+            splitter = re.compile("[0-9]+\.")
+            captions = splitter.split(captions)
+            captions = [point.split(".") for point in captions]
+            captions = [sent for point in captions for sent in point]
+
+            cnt = 0
+            study_sent = []
+            # create tokens from captions
+            for cap in captions:
+                if len(cap) == 0:
+                    continue
+
+                cap = cap.replace("\ufffd\ufffd", " ")
+                # picks out sequences of alphanumeric characters as tokens
+                # and drops everything else
+                tokenizer = RegexpTokenizer(r"\w+")
+                tokens = tokenizer.tokenize(cap.lower())
+                # NOTE: < 3 has instances of ['no', 'pneumothorax'], ['clear', 'lung']
+                if len(tokens) <= 1:
+                    continue
+
+                # filter tokens for current sentence
+                included_tokens = []
+                for t in tokens:
+                    t = t.encode("ascii", "ignore").decode("ascii")
+                    if len(t) > 0:
+                        included_tokens.append(t)
+
+                if len(included_tokens) > 0:
+                    study_sent.append(" ".join(included_tokens))
+
+                cnt += len(included_tokens)
+
+            if cnt >= 3:
+                sent_lens.append(cnt)
+                num_sents.append(len(study_sent))
+                path2sent[row[MIMIC_CXR_PATH_COL]] = study_sent
+
+        # get report word/setence statistics
+        sent_lens = np.array(sent_lens)
+        num_sents = np.array(num_sents)
+
+        print(
+            f"sent lens: {sent_lens.min()},{sent_lens.mean()},{sent_lens.max()} [{np.percentile(sent_lens, 5)}, {np.percentile(sent_lens, 95)}]"
+        )
+        print(
+            f"num sents: {num_sents.min()},{num_sents.mean()},{num_sents.max()} [{np.percentile(num_sents, 5)}, {np.percentile(num_sents, 95)}]"
+        )
+
+        return path2sent
+
+    def get_caption(self, path):
+        series_sents = self.path2sent[path]
+
+        if len(series_sents) == 0:
+            raise Exception("no sentence for path")
+
+        # separate different sentences
+        series_sents = list(filter(lambda x: x != "", series_sents))
+        sent = " ".join(series_sents)
+
+        tokens = self.tokenizer(
+            sent,
+            return_tensors="pt",
+            truncation=True,
+            padding="max_length",
+            max_length=self.cfg.caption_max_len
+        )
+        x_len = len([t for t in tokens["input_ids"][0] if t != 0])
+
+        return tokens, x_len
+
+    def preprocess_mimic_csv_files(self, seed=42, extract_text=False):
+        if not self.cfg.override_master_csv and os.path.exists(MIMIC_CXR_MASTER_CSV):
+            print('Retrieval preprocessed master.csv file...')
+            return pd.read_csv(MIMIC_CXR_MASTER_CSV)
+
+        print('Creating master csv file for mimic...')
+        np.random.seed(seed)
+        if extract_text:
+            extract_mimic_text()
+        metadata_df = pd.read_csv(MIMIC_CXR_META_CSV, compression="infer")
+        metadata_df = metadata_df[["dicom_id", "subject_id",
+                                "study_id", "ViewPosition"]].astype(str)
+        metadata_df["study_id"] = metadata_df["study_id"].apply(lambda x: "s"+x)
+        # Only keep frontal images
+        metadata_df = metadata_df[metadata_df["ViewPosition"].isin(["PA", "AP"])]
+
+        text_df = pd.read_csv(MIMIC_CXR_TEXT_CSV)
+        text_df.dropna(subset=["impression", "findings"], how="all", inplace=True)
+        text_df = text_df[["study", "impression", "findings"]]
+        text_df.rename(columns={"study": "study_id"}, inplace=True)
+
+        split_df = pd.read_csv(MIMIC_CXR_SPLIT_CSV, compression="infer")
+        split_df = split_df.astype(str)
+        split_df["study_id"] = split_df["study_id"].apply(lambda x: "s"+x)
+
+        # TODO: merge validate and test into test.
+        split_df["split"] = split_df["split"].apply(
+            lambda x: "valid" if x == "validate" else x)
+
+        chexpert_df = pd.read_csv(MIMIC_CXR_CHEXPERT_CSV, compression="infer")
+        chexpert_df[["subject_id", "study_id"]] = chexpert_df[[
+            "subject_id", "study_id"]].astype(str)
+        chexpert_df["study_id"] = chexpert_df["study_id"].apply(lambda x: "s"+x)
+
+        master_df = pd.merge(metadata_df, text_df, on="study_id", how="left")
+        master_df = pd.merge(master_df, split_df, on=["dicom_id", "subject_id", "study_id"], how="inner")
+        master_df.dropna(subset=["impression", "findings"], how="all", inplace=True)
         
-    master_df.insert(loc=0, column="Path", value=path_list)
+        n = len(master_df)
+        master_data = master_df.values
+        root_dir = MIMIC_CXR_JPG_DATA_DIR
+        path_list = []
+        for i in range(n):
+            row = master_data[i]
+            file_path = "%s/p%s/p%s/%s/%s.jpg" % (root_dir, str(
+                row[1])[:2], str(row[1]), str(row[2]), str(row[0]))
+            path_list.append(file_path)
+            
+        master_df.insert(loc=0, column="Path", value=path_list)
 
-    # Create labeled data df
-    labeled_data_df = pd.merge(master_df, chexpert_df, on=[
-                               "subject_id", "study_id"], how="inner")
-    labeled_data_df.drop(["dicom_id", "subject_id", "study_id",
-                          "impression", "findings"], axis=1, inplace=True)
+        # Create labeled data df
+        labeled_data_df = pd.merge(master_df, chexpert_df, on=[
+                                "subject_id", "study_id"], how="inner")
+        labeled_data_df.drop(["dicom_id", "subject_id", "study_id",
+                            "impression", "findings"], axis=1, inplace=True)
 
-    train_df = labeled_data_df.loc[labeled_data_df["split"] == "train"]
-    train_df.to_csv(MIMIC_CXR_TRAIN_CSV, index=False)
-    valid_df = labeled_data_df.loc[labeled_data_df["split"] == "valid"]
-    valid_df.to_csv(MIMIC_CXR_TEST_CSV, index=False)
+        train_df = labeled_data_df.loc[labeled_data_df["split"] == "train"]
+        train_df.to_csv(MIMIC_CXR_TRAIN_CSV, index=False)
+        valid_df = labeled_data_df.loc[labeled_data_df["split"] == "valid"]
+        valid_df.to_csv(MIMIC_CXR_TEST_CSV, index=False)
 
-    # master_df.drop(["dicom_id", "subject_id", "study_id"],
-    #                axis=1, inplace=True)
+        # master_df.drop(["dicom_id", "subject_id", "study_id"],
+        #                axis=1, inplace=True)
 
-    # Fill nan in text
-    master_df[["impression"]] = master_df[["impression"]].fillna(" ")
-    master_df[["findings"]] = master_df[["findings"]].fillna(" ")
-    master_df.to_csv(MIMIC_CXR_MASTER_CSV, index=False)
+        # Fill nan in text
+        master_df[["impression"]] = master_df[["impression"]].fillna(" ")
+        master_df[["findings"]] = master_df[["findings"]].fillna(" ")
+        master_df.to_csv(MIMIC_CXR_MASTER_CSV, index=False)
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    pass

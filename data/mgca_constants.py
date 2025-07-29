@@ -1,11 +1,9 @@
-import os
 from pathlib import Path
-
 
 # DATA_BASE_DIR = os.path.join(os.path.dirname(
 #     os.path.abspath(__file__)), "../../data")
 # DATA_BASE_DIR = Path(DATA_BASE_DIR)
-DATA_BASE_DIR = '/cluster/projects/mcintoshgroup/publicData'
+DATA_BASE_DIR = Path('/cluster/projects/mcintoshgroup/publicData')
 
 # #############################################
 # CheXpert constants
@@ -177,14 +175,15 @@ CHEXPERT_CLASS_PROMPTS = {
 # MIMIC-CXR-JPG constants
 # #############################################
 # /MIMIC-CXR/MIMIC-CXR-JPG
-MIMIC_CXR_DATA_DIR = DATA_BASE_DIR / "MIMIC-CXR/MIMIC-CXR-JPG"
+MIMIC_CXR_DATA_DIR = DATA_BASE_DIR / "MIMIC-CXR"
+MIMIC_CXR_JPG_DATA_DIR = MIMIC_CXR_DATA_DIR / "MIMIC-CXR-JPG"
 MIMIC_CXR_METADATA_DIR = DATA_BASE_DIR / "fine-grain/MIMIC-CXR-max-metadata"
 # MIMIC_CXR_TRAIN_TXT = MIMIC_CXR_METADATA_DIR / "train.txt"
 # MIMIC_CXR_VALID_TXT = MIMIC_CXR_METADATA_DIR / "test.txt"
-MIMIC_CXR_CHEXPERT_CSV = MIMIC_CXR_METADATA_DIR / "mimic-cxr-2.0.0-chexpert.csv"
-MIMIC_CXR_META_CSV = MIMIC_CXR_METADATA_DIR / "mimic-cxr-2.0.0-metadata.csv"
+MIMIC_CXR_CHEXPERT_CSV = MIMIC_CXR_METADATA_DIR / "mimic-cxr-2.0.0-chexpert.csv.gz"
+MIMIC_CXR_META_CSV = MIMIC_CXR_METADATA_DIR / "mimic-cxr-2.0.0-metadata.csv.gz"
 MIMIC_CXR_TEXT_CSV = MIMIC_CXR_METADATA_DIR / "mimic_cxr_sectioned.csv"
-MIMIC_CXR_SPLIT_CSV = MIMIC_CXR_METADATA_DIR / "mimic-cxr-2.0.0-split.csv"
+MIMIC_CXR_SPLIT_CSV = MIMIC_CXR_METADATA_DIR / "mimic-cxr-2.0.0-split.csv.gz"
 # Created csv
 MIMIC_CXR_TRAIN_CSV = MIMIC_CXR_METADATA_DIR / "train.csv"
 MIMIC_CXR_VALID_CSV = MIMIC_CXR_METADATA_DIR / "test.csv"

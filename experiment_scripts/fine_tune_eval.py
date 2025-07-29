@@ -1,4 +1,8 @@
 
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
@@ -8,11 +12,10 @@ from tqdm import tqdm
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import average_precision_score
 
-from preprocess_mimic_cxr_jpg import MIMICCXRConfig, MIMICCXRDataloader
 from models.vlm_models import cxrclip_model, LinearProjectionHead, mgca_model
-from preprocess_rexerr import RexErrDataloader
+from data.preprocess_mimic_cxr_jpg import MIMICCXRDataloader, MIMICCXRConfig
+from data.preprocess_rexerr import RexErrDataloader
 
-import os
 import pickle
 from types import SimpleNamespace
 import argparse
@@ -176,7 +179,7 @@ def str2bool(v):
 def parse_args():
     parser = argparse.ArgumentParser(description="Training script with configurable parameters")
 
-    parser.add_argument("--batch_size", type=int, default=512, help="Batch size for training")
+    parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training")
     parser.add_argument("--learning_rate", type=float, default=5e-2, help="Learning rate")
     parser.add_argument("--patience", type=int, default=100, help="Early stopping patience") # 100
     parser.add_argument("--epochs", type=int, default=800, help="Number of training epochs") # 800
@@ -289,18 +292,20 @@ def main():
         transform=transform,
         target_transform=None,
         verify_data_path=args.verify_data_path,
-        mask_uncertain_labels=args.mask_uncertain_labels
+        mask_uncertain_labels=args.mask_uncertain_labels,
+        override_master_csv=False,
+        caption_max_len=128
     )
     print('processing training split...')
-    train_dataset = MIMICCXRDataloader(cfg, split="train")
+    train_dataset = MIMICCXRDataloader(cfg, tokenizer, split="train")
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     print('processing validation split...')
-    val_dataset = MIMICCXRDataloader(cfg, split="val")
+    val_dataset = MIMICCXRDataloader(cfg, tokenizer, split="val")
     val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     print('processing testing split...')
-    test_dataset = MIMICCXRDataloader(cfg, split="test")
+    test_dataset = MIMICCXRDataloader(cfg, tokenizer, split="test")
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
     print("Classes:", train_dataset.classes)
@@ -315,7 +320,6 @@ def main():
     models = {
         'image_encoder': image_encoder,
         'text_encoder': text_encoder,
-        'tokenizer': tokenizer,
         'image_projector': image_projector,
         'text_projector': text_projector,
         'model_name': MODEL_NAME
