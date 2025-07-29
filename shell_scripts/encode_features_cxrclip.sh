@@ -17,4 +17,4 @@ source activate ctclip
 # python /cluster/home/t135419uhn/fine-grain/eval.py --model r50_m.tar --batch_size 512 --text_max_length 512
 
 # mimic cxr
-python /cluster/home/t135419uhn/fine-grain/fine_tune_eval.py --model r50_m.tar --batch_size 512 --encode_data_only true --mask_uncertain_labels true
+python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluation_main.py --model r50_m.tar --batch_size 512 --encode_data_only true --mask_uncertain_labels true

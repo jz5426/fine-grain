@@ -87,8 +87,7 @@ def encode_dataset(dataloader, models, pickle_dest, device):
             img_feats = image_projector(img_feats)    # apply projector: shape: [N, D']
 
             # Encode and project caption features
-            # TODO: this is wrong
-            report_feat, word_feat, last_atten_pt, sents = text_encoder(
+            report_feat, _, _, _ = text_encoder(
                 token_caption['input_ids'].squeeze(), 
                 token_caption['attention_mask'].squeeze(),
                 token_caption['token_type_ids'].squeeze()
@@ -97,6 +96,7 @@ def encode_dataset(dataloader, models, pickle_dest, device):
             caption_feats = text_projector(report_feat)
 
             # normalize the feature vectors
+            # NOTE: after encoding the text and image features, we can do retrieval, few-shot and fine-tune and etc.
             img_feats = l2norm(img_feats)
             caption_feats = l2norm(caption_feats)
 
@@ -105,7 +105,7 @@ def encode_dataset(dataloader, models, pickle_dest, device):
                 encoded_data.append(SimpleNamespace(**{
                     'study_id': _id,
                     'caption_feats': caption_feats[i].cpu(),
-                    'image_feats': img_feats[i].cpu(), # [512]
+                    'image_feats': img_feats[i].cpu(),
                     'label': labels[i].cpu()
                 }))
             

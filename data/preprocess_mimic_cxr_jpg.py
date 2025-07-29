@@ -49,8 +49,8 @@ class MIMICCXRDataloader(Dataset):
     def __init__(self, cfg: MIMICCXRConfig, tokenizer, split: SplitT = "train"):
 
         self.cfg = cfg
-        self.split = "valid" if split == "val" else split
-        assert self.split in {"train", "valid", "test"}, f"Invalid split: {split}"
+        self.split = "validate" if split == "val" else split
+        assert self.split in {"train", "validate", "test"}, f"Invalid split: {split}"
 
         # Load metadata and split
         metadata = pd.read_csv(cfg.metadata_csv, compression="infer")
@@ -80,14 +80,10 @@ class MIMICCXRDataloader(Dataset):
         self.classes = label_cols
 
         # replace -1.0 as 0
-        if not self.cfg.mask_uncertain_labels:
-            df[label_cols] = df[label_cols].fillna(0.0).replace(-1.0, 0.0).astype("float32")
-        else:
-            df[label_cols] = df[label_cols].fillna(0.0).astype("float32")
-
+        df[label_cols] = df[label_cols].fillna(0.0).replace(-1.0, 0.0).astype("float32") if not self.cfg.mask_uncertain_labels else df[label_cols].fillna(0.0).astype("float32")
+        
         # Cache the targets as a NumPy array for speed
-        self.targets = df[label_cols].to_numpy(dtype="float32")
-        self.label_cols = label_cols
+        self.label_col_names = label_cols
 
         self.metadata_df = df.reset_index(drop=True)
         self.transform = cfg.transform
@@ -97,15 +93,15 @@ class MIMICCXRDataloader(Dataset):
 
         # NOTE: the following are the processes for the MGCA Mmodel
         # TODO: should be unique for each method.
-        # curate the master.csv file once
         self.master_df = self.preprocess_mimic_csv_files()
-        self.filenames, self.path2sent = self.load_text_data(self.split)
+        self.filenames, self.path2sent = self.load_text_data('valid' if self.split == 'validate' else self.split)
 
         # get the metadatadf as dictionary
         self.metadata_dict = {
             row['path']: row for _, row in df.iterrows()
         }
-
+        # TODO: check why there are few files in self.filenames compared to self.metadata_dict
+        assert set(self.filenames).issubset(set(self.metadata_dict.keys()))
 
     def _load_image_paths(self, filelist_path: str) -> Dict[str, str]:
         id2path = {}
@@ -138,28 +134,28 @@ class MIMICCXRDataloader(Dataset):
 
     def __getitem__(self, idx: int):
         path = self.filenames[idx]
+        row = self.metadata_dict[path]
         img = Image.open(path).convert("RGB")
-        target = torch.from_numpy(self.targets[idx])  # float32 tensor of shape (14,)
-
+        target = row.get(self.label_col_names).to_numpy(dtype="float32")
         if self.transform:
             img = self.transform(img)
         if self.target_transform:
             target = self.target_transform(target)
 
         # get the text/caption
-        caps, cap_len = self.get_caption(path)
+        caps, cap_len, sent = self.get_caption(path)
         # example call:  text_encoder(**caps).last_hidden_state[:, 0, :] 
 
-        row = self.metadata_dict[path]
         meta = {
-            "dicom_id": row["dicom_id"],
+            "dicom_id": row.get("dicom_id"),
             "study_id": row.get("study_id"),
             "subject_id": row.get("subject_id"),
+            "target": target,
             "path": path,
             "image": img,
-            "target": target,
             "caption": caps,
-            "caption_len": cap_len
+            "caption_len": cap_len,
+            "caption_raw": sent
         }
 
         return meta
@@ -277,7 +273,7 @@ class MIMICCXRDataloader(Dataset):
         )
         x_len = len([t for t in tokens["input_ids"][0] if t != 0])
 
-        return tokens, x_len
+        return tokens, x_len, sent
 
     def preprocess_mimic_csv_files(self, seed=42, extract_text=False):
         if not self.cfg.override_master_csv and os.path.exists(MIMIC_CXR_MASTER_CSV):
@@ -347,8 +343,3 @@ class MIMICCXRDataloader(Dataset):
         master_df[["impression"]] = master_df[["impression"]].fillna(" ")
         master_df[["findings"]] = master_df[["findings"]].fillna(" ")
         master_df.to_csv(MIMIC_CXR_MASTER_CSV, index=False)
-
-
-if __name__ == "__main__":
-    # main()
-    pass

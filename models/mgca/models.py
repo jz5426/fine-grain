@@ -213,8 +213,8 @@ class BertEncoder(nn.Module):
 
         return agg_embs_batch, sentences, last_atten_pt
 
-    def forward(self, ids, attn_mask, token_type, get_local=False):
-        outputs = self.model(ids, attn_mask, token_type,
+    def forward(self, input_ids, attention_mask, token_type_ids, get_local=False):
+        outputs = self.model(input_ids, attention_mask, token_type_ids,
                              return_dict=True, mode="text")
 
         last_layer_attn = outputs.attentions[-1][:, :, 0, 1:].mean(dim=1)
@@ -222,11 +222,11 @@ class BertEncoder(nn.Module):
 
         if self.agg_tokens:
             all_feat, sents, last_atten_pt = self.aggregate_tokens(
-                all_feat, ids, last_layer_attn)
+                all_feat, input_ids, last_layer_attn)
             last_atten_pt = last_atten_pt[:, 1:].contiguous()
         else:
             sents = [[self.idxtoword[w.item()] for w in sent]
-                     for sent in ids]
+                     for sent in input_ids]
 
         if self.last_n_layers == 1:
             all_feat = all_feat[:, 0]
@@ -234,4 +234,6 @@ class BertEncoder(nn.Module):
         report_feat = all_feat[:, 0].contiguous()
         word_feat = all_feat[:, 1:].contiguous()
 
-        return report_feat, word_feat, last_atten_pt, sents
+        # return report_feat, word_feat, last_atten_pt, sents
+        return report_feat
+

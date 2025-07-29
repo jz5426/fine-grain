@@ -78,8 +78,8 @@ def encode_dataset(dataloader, models, pickle_dest, tokens_max_length=256):
         for batch in tqdm(dataloader):
             # check preprocess_data.py
             tensor_images = batch['tensor_images'][0]
-            origin_text = batch['original_text']    # assume this is the input text
-            err_text = batch['error_text']
+            origin_text = batch['caption']    # assume this is the input text
+            err_text = batch['error_caption']
             study_id = batch['study_id'] # key of the results
 
             # Encode and project the image featuress
