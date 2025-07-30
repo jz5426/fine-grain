@@ -148,7 +148,7 @@ class BaseEvaluationPipeline(ABC):
         for d in data:
             img_feats.append(d.image_feats)
             txt_feats.append(d.text_feats)
-            labels.append(d.labels)
+            labels.append(d.label)
         img_feats = torch.stack(img_feats).to(self.device)
         txt_feats = torch.stack(txt_feats).to(self.device)
         labels = torch.stack(labels).to(self.device)

@@ -38,7 +38,7 @@ def main():
         return
 
     # pipeline.fine_tune_classifier_and_evaluate(modality='text')
-    # pipeline.retrieval(topk=10)
+    pipeline.retrieval(topk=10)
 
 if __name__ == '__main__':
     main()
