@@ -27,7 +27,7 @@ class MimicCxrEvaluationPipeline(BaseEvaluationPipeline):
             target_transform=None,
             mask_uncertain_labels=self.mask_uncertain_labels,
             override_master_csv=False,
-            caption_max_len=256 #256 128
+            caption_max_len=self.max_text_len #256 128
         )
 
         train_dataset = MIMICCXRDataloader(cfg, self.tokenizer, "train")
@@ -79,7 +79,6 @@ class MimicCxrEvaluationPipeline(BaseEvaluationPipeline):
     def retrieval(self, topk):
         """use the test split for retrieval"""
         assert 1 <= topk and topk <= 100
-
 
         # TODO: DOUBLE CHECK THE FOLLOWING IMPLEMENTATION, SOMETHING NOT RIGHT
         # img_feats and txt are of the same shape [x, y], x is number of feature embeddings, y is the dimension of the features

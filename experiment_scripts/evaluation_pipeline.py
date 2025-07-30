@@ -33,6 +33,19 @@ class BaseEvaluationPipeline(ABC):
         self.pred_thresh = self.args.prediction_threshold
         self.model_ckpt = self.args.model
         self.mask_uncertain_labels = self.args.mask_uncertain_labels
+        self.max_text_len = self.args.max_text_len
+        self.fine_tune_modal = self.args.fine_tune_modal
+
+        # print each argument
+        print(f"Batch size: {self.batch_size}")
+        print(f"Learning rate: {self.lr}")
+        print(f"Patience: {self.patience}")
+        print(f"Epochs: {self.epochs}")
+        print(f"Prediction threshold: {self.pred_thresh}")
+        print(f"Model checkpoint: {self.model_ckpt}")
+        print(f"Mask uncertain labels: {self.mask_uncertain_labels}")
+        print(f"Max text length: {self.max_text_len}")
+        print(f"Fine-tune modality: {self.fine_tune_modal}")
 
     def _setup_model_and_transform(self):
         if self.model_ckpt in ['r50_mcc.tar', 'r50_mc.tar', 'r50_m.tar']:
@@ -74,14 +87,14 @@ class BaseEvaluationPipeline(ABC):
         else:
             raise ValueError(f"Unsupported model checkpoint: {self.model_ckpt}")
 
-        for model in [self.vlm.image_encoder, self.vlm.image_projection, self.vlm.text_encoder, self.vlm.text_projection]:
-            model.to(self.device).eval()
-
         self.tokenizer = self.vlm.tokenizer
         self.image_encoder = self.vlm.image_encoder
         self.text_encoder = self.vlm.text_encoder
         self.image_projection = self.vlm.image_projection
         self.text_projection = self.vlm.text_projection
+
+        for model in [self.image_encoder, self.image_projection, self.text_encoder, self.text_projection]:
+            model.to(self.device).eval()
 
     def encode_all_splits(self, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/fine_tune_mimic/'):
         models = {
@@ -179,6 +192,7 @@ class BaseEvaluationPipeline(ABC):
         pr_auc = average_precision_score(flat_labels, flat_probs)
         auc = roc_auc_score(flat_labels, flat_probs, average='micro')
 
+        print(f'accuracy: {accuracy} auc: {auc} pr_auc: {pr_auc}')
         return {"accuracy": accuracy, "pr_auc": pr_auc, "auc": auc}
 
     def _save_results(self, metrics, out_path):

@@ -12,7 +12,7 @@ def str2bool(v):
 def parse_args():
     parser = argparse.ArgumentParser(description="Training script with configurable parameters")
     # mgca_resnet_50.ckpt r50_m.tar
-    parser.add_argument("--batch_size", type=int, default=128, help="Batch size for training")
+    parser.add_argument("--batch_size", type=int, default=1024, help="Batch size for training")
     parser.add_argument("--learning_rate", type=float, default=5e-2, help="Learning rate")
     parser.add_argument("--patience", type=int, default=100, help="Early stopping patience") # 100
     parser.add_argument("--epochs", type=int, default=800, help="Number of training epochs") # 800
@@ -21,6 +21,9 @@ def parse_args():
     parser.add_argument("--encode_data_only", type=str2bool, default=False, help="is encode data only")
     parser.add_argument("--verify_data_path", type=str2bool, default=False, help="verify data paths")
     parser.add_argument("--mask_uncertain_labels", type=str2bool, default=True, help="mask chestpert labels (-1)")
+    parser.add_argument("--max_text_len", type=int, default=128, help="128 for mgca, 256 for cxrclip")
+    parser.add_argument("--fine_tune_modal", type=str, default='text', help="image or text")
+
     return parser.parse_args()
 
 def main():
@@ -37,8 +40,8 @@ def main():
         print("Data encoding complete.")
         return
 
-    # pipeline.fine_tune_classifier_and_evaluate(modality='text')
-    pipeline.retrieval(topk=10)
+    pipeline.fine_tune_classifier_and_evaluate(modality=args.fine_tune_modal)
+    # pipeline.retrieval(topk=10)
 
 if __name__ == '__main__':
     main()
