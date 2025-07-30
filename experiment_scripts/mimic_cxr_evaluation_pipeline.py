@@ -80,13 +80,6 @@ class MimicCxrEvaluationPipeline(BaseEvaluationPipeline):
         """use the test split for retrieval"""
         assert 1 <= topk and topk <= 100
 
-        # TODO: DOUBLE CHECK THE FOLLOWING IMPLEMENTATION, SOMETHING NOT RIGHT
-        # img_feats and txt are of the same shape [x, y], x is number of feature embeddings, y is the dimension of the features
-        # i want to perform text-to-image retrieval for each image feature in the img_feats tensor and also do the same for image-to-text retrieval
-        # that is, for each image embedding, whether the corresponding paired text_embedding appears in the topk most similar text embeddings
-        # at the end, i want to return the topk retrival recall metrics.
-        # recall
-
         img_feats, txt_feats, _ = self._extract_paired_image_text_features_labels(self.test_data)
         device = img_feats.device
 
@@ -106,10 +99,12 @@ class MimicCxrEvaluationPipeline(BaseEvaluationPipeline):
         hits_i2t = (topk_indices_i2t == gt_indices.unsqueeze(1)).any(dim=1).float()
         recall_i2t = hits_i2t.mean().item()
 
-        return {
+        results = {
             f"Recall@{topk}_T2I": recall_t2i,
             f"Recall@{topk}_I2T": recall_i2t
         }
+        print(f'Retrieval performance for top-{topk}: T2I -> {recall_t2i} I2T -> {recall_i2t}')
+        return results
 
     def zero_shot_evaluation(self):
         """use the test split for retrieval"""

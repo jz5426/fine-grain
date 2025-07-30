@@ -272,7 +272,7 @@ class BaseEvaluationPipeline(ABC):
                     }))
                 
                 # #NOTE: temporary for testing
-                # if len(encoded_data) >= 1000:
+                # if len(encoded_data) >= 256:
                 #     return encoded_data
 
         # Ensure the parent directories exist

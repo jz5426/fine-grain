@@ -17,5 +17,5 @@ source activate ctclip
 # python /cluster/home/t135419uhn/fine-grain/eval.py --model mgca_resnet_50.ckpt --batch_size 256 --text_max_length 512
 
 # mimic cxr
-python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluation_main.py --model mgca_resnet_50.ckpt --batch_size 256 --encode_data_only true --mask_uncertain_labels true
+python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_fine_tune_main.py --model mgca_resnet_50.ckpt --batch_size 256 --encode_data_only true
 
