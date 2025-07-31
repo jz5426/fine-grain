@@ -33,14 +33,13 @@ def main():
         print("Data path verified.")
         return
 
-    pipeline.encode_all_splits()
+    pipeline.encode_splits()
 
     if args.encode_data_only:
         print("Data encoding complete.")
         return
 
     pipeline.fine_tune_classifier_and_evaluate(modality=args.fine_tune_modal)
-    # pipeline.retrieval(topk=10)
 
 if __name__ == '__main__':
     main()

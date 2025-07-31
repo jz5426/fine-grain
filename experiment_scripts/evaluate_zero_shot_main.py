@@ -16,7 +16,7 @@ def parse_args():
     parser.add_argument("--max_text_len", type=int, default=128, help="128 for mgca, 256 for cxrclip")
 
     # non-relevant to the retrieval task.
-    parser.add_argument("--batch_size", type=int, default=1024, help="Batch size for training")
+    parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training")
     parser.add_argument("--learning_rate", type=float, default=5e-2, help="Learning rate")
     parser.add_argument("--patience", type=int, default=100, help="Early stopping patience") # 100
     parser.add_argument("--epochs", type=int, default=800, help="Number of training epochs") # 800
@@ -31,12 +31,8 @@ def main():
     args = parse_args()
     pipeline = MimicCxrEvaluationPipeline(args)
 
-    pipeline.encode_splits()
-
-    # pipeline.retrieval(topk=1)
-    # pipeline.retrieval(topk=5)
-    # pipeline.retrieval(topk=10)
-    # pipeline.retrieval(topk=50)
+    pipeline.encode_splits(train=False, val=False, test=True)
+    pipeline.zero_shot_evaluation(pipeline.test_loader)
 
 if __name__ == '__main__':
     main()

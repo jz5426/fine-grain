@@ -42,9 +42,9 @@ class MIMICCXRDataloader(Dataset):
     """
     CHEXPERT_LABELS = [
         "Atelectasis", "Cardiomegaly", "Consolidation", "Edema", "Enlarged Cardiomediastinum",
-        "Fracture", "Lung Lesion", "Lung Opacity", "Pleural Effusion", "Pneumonia",
-        "Pneumothorax", "Pleural Other", "Support Devices", "No Finding"
-    ]
+        "Fracture", "Lung Lesion", "Lung Opacity", "No Finding", "Pleural Effusion", "Pleural Other", "Pneumonia",
+        "Pneumothorax", "Support Devices"
+        ]
 
     def __init__(self, cfg: MIMICCXRConfig, tokenizer, split: SplitT = "train"):
 
@@ -77,6 +77,10 @@ class MIMICCXRDataloader(Dataset):
         missing_cols = [c for c in label_cols if c not in df.columns]
         if missing_cols:
             raise ValueError(f"CheXpert CSV missing expected columns: {missing_cols}")
+
+        # NOTE: make sure the label_cols are in the same order as the one from datacol
+        assert list(df.columns[14:]) == label_cols
+
         self.classes = label_cols
 
         # replace -1.0 as 0
@@ -136,7 +140,9 @@ class MIMICCXRDataloader(Dataset):
         path = self.filenames[idx]
         row = self.metadata_dict[path]
         img = Image.open(path).convert("RGB")
-        target = row.get(self.label_col_names).to_numpy(dtype="float32")
+        # make sure the target is the same order as in prediction.
+        target = row[self.label_col_names].to_numpy(dtype="float32")
+        # target = row.get(self.label_col_names).to_numpy(dtype="float32")
         if self.transform:
             img = self.transform(img)
         if self.target_transform:
@@ -144,7 +150,6 @@ class MIMICCXRDataloader(Dataset):
 
         # get the text/caption
         caps, cap_len, sent = self.get_caption(path)
-        # example call:  text_encoder(**caps).last_hidden_state[:, 0, :] 
 
         meta = {
             "dicom_id": row.get("dicom_id"),

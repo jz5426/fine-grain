@@ -96,35 +96,29 @@ class BaseEvaluationPipeline(ABC):
         for model in [self.image_encoder, self.image_projection, self.text_encoder, self.text_projection]:
             model.to(self.device).eval()
 
-    def encode_all_splits(self, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/fine_tune_mimic/'):
-        models = {
-            'image_encoder': self.image_encoder,
-            'text_encoder': self.text_encoder,
-            'image_projector': self.image_projection,
-            'text_projector': self.text_projection,
-            'model_name': self.model_name
-        }
+    def encode_splits(self, train=True, val=True, test=True, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/fine_tune_mimic/'):
+        assert any([train, val, test]) == True
 
-        print("Encoding train set...")
-        self.train_data = self.encode_dataset(
-            self.train_loader, 
-            models, 
-            pickle_dest=os.path.join(pickle_dest, f'{self.model_specific_cache_dir}/train_features.joblib'),
-            device=self.device)
+        if train:
+            print("Encoding train set...")
+            self.train_data = self.encode_dataset(
+                self.train_loader, 
+                pickle_dest=os.path.join(pickle_dest, f'{self.model_specific_cache_dir}/train_features.joblib'),
+                device=self.device)
 
-        print("Encoding validation set...")
-        self.val_data = self.encode_dataset(
-            self.val_loader, 
-            models, 
-            pickle_dest=os.path.join(pickle_dest, f'{self.model_specific_cache_dir}/val_features.joblib'),
-            device=self.device)
+        if val:
+            print("Encoding validation set...")
+            self.val_data = self.encode_dataset(
+                self.val_loader, 
+                pickle_dest=os.path.join(pickle_dest, f'{self.model_specific_cache_dir}/val_features.joblib'),
+                device=self.device)
 
-        print("Encoding test set...")
-        self.test_data = self.encode_dataset(
-            self.test_loader, 
-            models, 
-            pickle_dest=os.path.join(pickle_dest, f'{self.model_specific_cache_dir}/test_features.joblib'),
-            device=self.device)
+        if test:
+            print("Encoding test set...")
+            self.test_data = self.encode_dataset(
+                self.test_loader, 
+                pickle_dest=os.path.join(pickle_dest, f'{self.model_specific_cache_dir}/test_features.joblib'),
+                device=self.device)
 
     @abstractmethod
     def fine_tune_classifier_and_evaluate(self):
@@ -213,7 +207,7 @@ class BaseEvaluationPipeline(ABC):
         df.to_csv(out_path, mode='a' if os.path.exists(out_path) else 'w', index=False)
         print(f"Results saved to {out_path}")
 
-    def encode_dataset(self, dataloader, models, pickle_dest, device):
+    def encode_dataset(self, dataloader, pickle_dest, device):
         
         if os.path.exists(pickle_dest):
             try:
@@ -223,12 +217,7 @@ class BaseEvaluationPipeline(ABC):
             except Exception as e:
                 print("[ERROR] Failed to load object.")
 
-        image_encoder = models['image_encoder']
-        text_encoder = models['text_encoder']
-        image_projector = models['image_projector']
-        text_projector = models['text_projector']
         encoded_data = []
-
         with torch.no_grad():
             for batch in tqdm(dataloader):
                 # check preprocess_data.py
@@ -243,11 +232,11 @@ class BaseEvaluationPipeline(ABC):
                 token_caption = token_caption.to(device)
 
                 # Encode and project the image features
-                img_feats = image_encoder(tensor_images)  # shape: [N, D]
-                img_feats = image_projector(img_feats)    # apply projector: shape: [N, D']
+                img_feats = self.image_encoder(tensor_images)  # shape: [N, D]
+                img_feats = self.image_projection(img_feats)    # apply projector: shape: [N, D']
 
                 # Encode and project caption features
-                report_feat = text_encoder(
+                report_feat = self.text_encoder(
                     input_ids=token_caption['input_ids'].squeeze(), 
                     attention_mask=token_caption['attention_mask'].squeeze(), 
                     token_type_ids=token_caption['token_type_ids'].squeeze()
@@ -255,7 +244,7 @@ class BaseEvaluationPipeline(ABC):
                 if not isinstance(report_feat, torch.Tensor):
                     report_feat = report_feat.last_hidden_state[:, 0, :]
                 # NOTE: check line 98 of mgca_module in the original repo => report_feat is the global embedding tensor
-                caption_feats = text_projector(report_feat)
+                caption_feats = self.text_projection(report_feat)
 
                 # normalize the feature vectors
                 # NOTE: after encoding the text and image features, we can do retrieval, few-shot and fine-tune and etc.

@@ -469,7 +469,6 @@ def main():
     print(f"Masked Micro PR-AUC:  {prauc:.4f}")
     print(f"Masked AUC:  {auc:.4f}")
 
-
     # -------------------------
     # save results to spreadsheet
     # -------------------------

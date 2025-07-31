@@ -19,5 +19,5 @@ python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_fine_tune
 python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_fine_tune_main.py --model r50_m.tar --batch_size 1024 --mask_uncertain_labels true --fine_tune_modal text --max_text_len 256
 python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_fine_tune_main.py --model r50_mcc.tar --batch_size 1024 --mask_uncertain_labels true --fine_tune_modal text --max_text_len 256
 
-# python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_fine_tune_main.py --model mgca_resnet_50.ckpt --batch_size 1024 --mask_uncertain_labels true --fine_tune_modal image --max_text_len 256
-# python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_fine_tune_main.py --model mgca_resnet_50.ckpt --batch_size 1024 --mask_uncertain_labels true --fine_tune_modal text --max_text_len 256
+python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_fine_tune_main.py --model mgca_resnet_50.ckpt --batch_size 1024 --mask_uncertain_labels true --fine_tune_modal image --max_text_len 256
+python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_fine_tune_main.py --model mgca_resnet_50.ckpt --batch_size 1024 --mask_uncertain_labels true --fine_tune_modal text --max_text_len 256
