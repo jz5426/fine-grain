@@ -6,7 +6,7 @@ from experiment_scripts.evaluation_pipeline import BaseEvaluationPipeline
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-
+from tqdm import tqdm
 from models.vlm_models import LinearProjectionHead
 from data.preprocess_mimic_cxr_jpg import MIMICCXRDataloader, MIMICCXRConfig
 
@@ -36,6 +36,7 @@ class MimicCxrEvaluationPipeline(BaseEvaluationPipeline):
         self.train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
         self.val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=True)
         self.test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False)
+        self.label_classes = train_dataset.classes
 
         print("Classes:", train_dataset.classes)
         print("Number of training samples:", len(train_dataset))
@@ -80,7 +81,7 @@ class MimicCxrEvaluationPipeline(BaseEvaluationPipeline):
         """use the test split for retrieval"""
         assert 1 <= topk and topk <= 100
 
-        img_feats, txt_feats, _ = self._extract_paired_image_text_features_labels(self.test_data)
+        img_feats, txt_feats, _ = self._extract_paired_image_text_features_labels(self.val_data)
         device = img_feats.device
 
         # Cosine similarity: sim[i, j] = similarity between text i and image j
@@ -106,7 +107,18 @@ class MimicCxrEvaluationPipeline(BaseEvaluationPipeline):
         print(f'Retrieval performance for top-{topk}: T2I -> {recall_t2i} I2T -> {recall_i2t}')
         return results
 
-    def zero_shot_evaluation(self):
+    def zero_shot_evaluation(self, dataloader):
         """use the test split for retrieval"""
+        # TODO: refer to encode_data as starting point.
+        # self.label_classes
+        with torch.no_grad():
+            for batch in tqdm(dataloader):
+                # check preprocess_data.py
+                tensor_images = batch['image']
+                study_id = batch['study_id'] # key of the results
+                labels = batch['target']
 
-        return 
+                # TODO: mimic how CT-CLIP do zero-shot
+                # or mimic how evaluator.py and constants.py file in cxr-clip file, 
+                # which uses prompt ensemble and random selection.
+        return

@@ -14,7 +14,9 @@
 source activate ctclip
 
 python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_retrieval_main.py --model r50_m.tar --max_text_len 256
-python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_retrieval_main.py --model mgca_resnet_50.ckpt --max_text_len 256
+python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_retrieval_main.py --model r50_mc.tar --max_text_len 256
+python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_retrieval_main.py --model r50_mcc.tar --max_text_len 256
+# python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_retrieval_main.py --model mgca_resnet_50.ckpt --max_text_len 256
 
-python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_retrieval_main.py --model r50_m.tar --max_text_len 128
-python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_retrieval_main.py --model mgca_resnet_50.ckpt --max_text_len 128
+# python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_retrieval_main.py --model r50_m.tar --max_text_len 128
+# python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_retrieval_main.py --model mgca_resnet_50.ckpt --max_text_len 128
