@@ -2,6 +2,8 @@
 
 import os
 import sys
+
+from experiment_scripts.rexerr_evaluation_pipeline import RexErrEvaluationPipeline
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from experiment_scripts.mimic_cxr_evaluation_pipeline import MimicCxrEvaluationPipeline
@@ -25,11 +27,19 @@ def parse_args():
     parser.add_argument("--verify_data_path", type=str2bool, default=False, help="verify data paths")
     parser.add_argument("--mask_uncertain_labels", type=str2bool, default=True, help="mask chestpert labels (-1)")
     parser.add_argument("--fine_tune_modal", type=str, default='text', help="image or text")
+    parser.add_argument("--eval_dataset", type=str, default='mimic', help="in ['mimic', 'rexerr']")
+
     return parser.parse_args()
 
 def main():
     args = parse_args()
-    pipeline = MimicCxrEvaluationPipeline(args)
+    assert args.eval_dataset in ['mimic', 'rexerr']
+    print(f'Evaluation dataset: {args.eval_dataset}')
+    
+    if args.eval_dataset == 'mimic':
+        pipeline = MimicCxrEvaluationPipeline(args)
+    elif args.eval_dataset == 'rexerr':
+        pipeline = RexErrEvaluationPipeline(args)
 
     pipeline.encode_splits(train=False, val=False, test=True)
     pipeline.zero_shot_evaluation(pipeline.test_loader)

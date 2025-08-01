@@ -13,8 +13,8 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import average_precision_score
 
 from models.vlm_models import cxrclip_model, LinearProjectionHead, mgca_model
-from data.preprocess_mimic_cxr_jpg import MIMICCXRDataloader, MIMICCXRConfig
-from data.preprocess_rexerr import RexErrDataloader
+from mimic_dataloader import MIMICCXRDataloader, MIMICCXRConfig
+from rexerr_dataloader import RexErrDataloader
 
 import pickle
 from types import SimpleNamespace

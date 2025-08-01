@@ -14,7 +14,7 @@ import numpy as np
 from sklearn.metrics import average_precision_score
 
 from models.vlm_models import cxrclip_model, LinearProjectionHead, mgca_model
-from preprocess_rexerr import RexErrDataloader
+from rexerr_dataloader import RexErrDataloader
 
 import os
 import pickle

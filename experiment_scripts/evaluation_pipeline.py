@@ -128,6 +128,35 @@ class BaseEvaluationPipeline(ABC):
     def retrieval(self, topk):
         pass
 
+    def i2t_t2i(self, txt_feats, img_feats, topk):
+        """
+        txt_feats: torch tensor of size NxC
+        img_feats: torch tensor of size NxC
+        top: int
+        """
+        # Cosine similarity: sim[i, j] = similarity between text i and image j
+        sim_matrix = txt_feats @ img_feats.T  # [N_text, N_image]
+        num_samples = sim_matrix.size(0)
+        gt_indices = torch.arange(num_samples, device=self.device)
+
+        ### TEXT-TO-IMAGE RETRIEVAL (T2I)
+        _, topk_indices_t2i = sim_matrix.topk(k=topk, dim=1, largest=True)
+        hits_t2i = (topk_indices_t2i == gt_indices.unsqueeze(1)).any(dim=1).float()
+        recall_t2i = hits_t2i.mean().item()
+
+        ### IMAGE-TO-TEXT RETRIEVAL (I2T)
+        sim_matrix_i2t = sim_matrix.T  # [N_image, N_text]
+        _, topk_indices_i2t = sim_matrix_i2t.topk(k=topk, dim=1, largest=True)
+        hits_i2t = (topk_indices_i2t == gt_indices.unsqueeze(1)).any(dim=1).float()
+        recall_i2t = hits_i2t.mean().item()
+
+        results = {
+            f"Recall@{topk}_T2I": recall_t2i,
+            f"Recall@{topk}_I2T": recall_i2t
+        }
+        print(f'Retrieval performance for top-{topk}: T2I -> {recall_t2i} I2T -> {recall_i2t}')
+        return results
+
     @abstractmethod
     def zero_shot_evaluation(self):
         pass
@@ -140,28 +169,19 @@ class BaseEvaluationPipeline(ABC):
     #     """this is for special case rexerr_eval"""
     #     pass
 
-    def _extract_text_feats_labels(self, data):
+    def _extract_text_feats_labels(self, data, return_label=True):
         feats = torch.stack([d.text_feats for d in data]).to(self.device)
-        labels = torch.stack([d.label for d in data]).to(self.device)
-        return feats, labels
+        if return_label:
+            labels = torch.stack([d.label for d in data]).to(self.device)
+            return feats, labels
+        return feats
 
-    def _extract_image_feats_labels(self, data):
+    def _extract_image_feats_labels(self, data, return_label=True):
         feats = torch.stack([d.image_feats for d in data]).to(self.device)
-        labels = torch.stack([d.label for d in data]).to(self.device)
-        return feats, labels
-    
-    def _extract_paired_image_text_features_labels(self, data):
-        img_feats, txt_feats, labels = [], [], []
-        for d in data:
-            img_feats.append(d.image_feats)
-            txt_feats.append(d.text_feats)
-            labels.append(d.label)
-        img_feats = torch.stack(img_feats).to(self.device)
-        txt_feats = torch.stack(txt_feats).to(self.device)
-        labels = torch.stack(labels).to(self.device)
-
-        return img_feats, txt_feats, labels
-
+        if return_label:
+            labels = torch.stack([d.label for d in data]).to(self.device)
+            return feats, labels
+        return feats
 
     def _evaluate_classifier(self, classifier, feats, labels):
         classifier.eval()
@@ -225,8 +245,6 @@ class BaseEvaluationPipeline(ABC):
                 study_id = batch['study_id'] # key of the results
                 labels = batch['target']
                 token_caption = batch['caption']
-
-                # TODO: currently only support MGCA model, not CXR
 
                 tensor_images = tensor_images.to(device)
                 token_caption = token_caption.to(device)

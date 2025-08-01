@@ -6,10 +6,10 @@ from experiment_scripts.evaluation_pipeline import BaseEvaluationPipeline
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from sklearn.metrics import roc_auc_score, average_precision_score, accuracy_score
+from sklearn.metrics import roc_auc_score, average_precision_score
 from tqdm import tqdm
 from models.vlm_models import LinearProjectionHead
-from data.preprocess_mimic_cxr_jpg import MIMICCXRDataloader, MIMICCXRConfig
+from data.mimic_dataloader import MIMICCXRDataloader, MIMICCXRConfig
 
 class MimicCxrEvaluationPipeline(BaseEvaluationPipeline):
     def __init__(self, args):
@@ -77,36 +77,24 @@ class MimicCxrEvaluationPipeline(BaseEvaluationPipeline):
         metrics = self._evaluate_classifier(classifier, test_feats, test_labels)
         out_path = f"/cluster/projects/mcintoshgroup/publicData/fine-grain/experiment/fine_tune_mimic/{self.experiment_model}_results.csv"
         self._save_results(metrics, out_path)
-    
+
+    def _extract_paired_image_text_features_labels(self, data):
+        img_feats, txt_feats, labels = [], [], []
+        for d in data:
+            img_feats.append(d.image_feats)
+            txt_feats.append(d.text_feats)
+            labels.append(d.label)
+        img_feats = torch.stack(img_feats).to(self.device)
+        txt_feats = torch.stack(txt_feats).to(self.device)
+        labels = torch.stack(labels).to(self.device)
+
+        return img_feats, txt_feats, labels
+
     def retrieval(self, topk):
         """use the test split for retrieval"""
         assert 1 <= topk and topk <= 100
-
         img_feats, txt_feats, _ = self._extract_paired_image_text_features_labels(self.val_data)
-        device = img_feats.device
-
-        # Cosine similarity: sim[i, j] = similarity between text i and image j
-        sim_matrix = txt_feats @ img_feats.T  # [N_text, N_image]
-        num_samples = sim_matrix.size(0)
-        gt_indices = torch.arange(num_samples, device=device)
-
-        ### TEXT-TO-IMAGE RETRIEVAL (T2I)
-        _, topk_indices_t2i = sim_matrix.topk(k=topk, dim=1, largest=True)
-        hits_t2i = (topk_indices_t2i == gt_indices.unsqueeze(1)).any(dim=1).float()
-        recall_t2i = hits_t2i.mean().item()
-
-        ### IMAGE-TO-TEXT RETRIEVAL (I2T)
-        sim_matrix_i2t = sim_matrix.T  # [N_image, N_text]
-        _, topk_indices_i2t = sim_matrix_i2t.topk(k=topk, dim=1, largest=True)
-        hits_i2t = (topk_indices_i2t == gt_indices.unsqueeze(1)).any(dim=1).float()
-        recall_i2t = hits_i2t.mean().item()
-
-        results = {
-            f"Recall@{topk}_T2I": recall_t2i,
-            f"Recall@{topk}_I2T": recall_i2t
-        }
-        print(f'Retrieval performance for top-{topk}: T2I -> {recall_t2i} I2T -> {recall_i2t}')
-        return results
+        self.i2t_t2i(txt_feats, img_feats, topk)
 
     def zero_shot_evaluation(self, dataloader):
         """use the test split for retrieval"""

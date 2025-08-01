@@ -14,4 +14,4 @@
 source activate ctclip
 
 python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_zero_shot_main.py --model r50_m.tar --batch_size 256 --mask_uncertain_labels true --max_text_len 256
-# python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_zero_shot_main.py --model mgca_resnet_50.ckpt --batch_size 256 --mask_uncertain_labels true --max_text_len 256
+python /cluster/home/t135419uhn/fine-grain/experiment_scripts/evaluate_zero_shot_main.py --model mgca_resnet_50.ckpt --batch_size 256 --mask_uncertain_labels true --max_text_len 256
