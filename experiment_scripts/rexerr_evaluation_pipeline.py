@@ -57,10 +57,10 @@ class RexErrEvaluationPipeline(BaseEvaluationPipeline):
     def rexerr_version_retrieval(self, data, topk):
         """check how much disturbance the noise imposes to the final results"""
 
-        img_feats = torch.cat([d.img_feats for d in data], dim=0)   # Shape [N, C]
-        paired_txt_feats = torch.cat([d.text_feats for d in data], dim=0)  # Shape [N, C]
-        err_txt_feats = torch.cat([d.err_text_feats for d in data], dim=0) # Shape [M, C]
-        txt_feats = torch.cat([paired_txt_feats, err_txt_feats], dim=0)    # Shape [N+M, C]
+        img_feats = torch.stack([d.image_feats for d in data], dim=0).to(self.device)   # Shape [N, C]
+        paired_txt_feats = torch.stack([d.text_feats for d in data], dim=0).to(self.device)   # Shape [N, C]
+        err_txt_feats = torch.stack([d.err_text_feats for d in data], dim=0).to(self.device)  # Shape [M, C]
+        txt_feats = torch.cat([paired_txt_feats, err_txt_feats], dim=0).to(self.device)     # Shape [N+M, C]
         num_paired = paired_txt_feats.size(0) # indicate the ground truths
         
         # TEXT-TO-IMAGE (T2I) RETRIEVAL
@@ -73,21 +73,21 @@ class RexErrEvaluationPipeline(BaseEvaluationPipeline):
         hits_t2i = (topk_indices_t2i == gt_indices.unsqueeze(1)).any(dim=1).float()
         recall_t2i = hits_t2i.mean().item()
 
-        # NOTE: THIS IS THE INTERESTED RESULTS -- IMAGE-TO-TEXT (I2T) RETRIEVAL
-        # For each image, check if the correct paired text (at the same index) is
-        # in the top-K among the pooled paired and error text
-        sim_i2t = img_feats @ txt_feats.T # [N, N+M]
-        _, topk_indices_i2t = sim_i2t.topk(k=topk, dim=1)
-        hits_i2t = (topk_indices_i2t == gt_indices.unsqueeze(1)).any(dim=1).float()
-        recall_i2t = hits_i2t.mean().item()
+        # --- IMAGE-TO-TEXT (I2T) with actual error embeddings ---
+        sim_i2t_err = img_feats @ txt_feats.T  # [N, N+M]
+        _, topk_indices_i2t_err = sim_i2t_err.topk(k=topk, dim=1)
+        hits_i2t_err = (topk_indices_i2t_err == gt_indices.unsqueeze(1)).any(dim=1).float()
+        recall_i2t_err = hits_i2t_err.mean().item()
 
         results = {
             f"Recall@{topk}_T2I": recall_t2i,
-            f"Recall@{topk}_I2T": recall_i2t
+            f"Recall@{topk}_I2T_err": recall_i2t_err,
         }
-        print(f"Retrieval performance with distractors for top-{topk}: T2I -> {recall_t2i} | I2T (Interested results) -> {recall_i2t}")
-        return results
 
+        print(f"Retrieval performance with distractors for top-{topk}:")
+        print(f"  T2I       -> {recall_t2i:.4f}")
+        print(f"  I2T_err   -> {recall_i2t_err:.4f}")
+        return results
 
     def retrieval(self, topk):
         """original retrieval final results"""
@@ -179,4 +179,4 @@ class RexErrEvaluationPipeline(BaseEvaluationPipeline):
         os.makedirs(os.path.dirname(pickle_dest), exist_ok=True)
         joblib.dump(encoded_data, pickle_dest, compress=3)
 
-        return self.encode_data
+        return self.encoded_data

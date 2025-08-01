@@ -13,7 +13,7 @@ def str2bool(v):
 def parse_args():
     parser = argparse.ArgumentParser(description="Training script with configurable parameters")
     # mgca_resnet_50.ckpt r50_m.tar
-    parser.add_argument("--model", type=str, default="mgca_resnet_50.ckpt", help="pretrained model checkpoint file name")
+    parser.add_argument("--model", type=str, default="r50_m.tar", help="pretrained model checkpoint file name")
     parser.add_argument("--max_text_len", type=int, default=128, help="128 for mgca, 256 for cxrclip")
 
     # non-relevant to the retrieval task.
@@ -46,17 +46,17 @@ def main():
 
     pipeline.encode_splits(train=False, val=False, test=True, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/fine_tune_rexerr/')
 
-    # ordinary retrieval
-    pipeline.retrieval(topk=1)
-    pipeline.retrieval(topk=5)
-    pipeline.retrieval(topk=10)
-    pipeline.retrieval(topk=50)
-
     # rexerr retrieval
     pipeline.rexerr_version_retrieval(pipeline.test_data, topk=1)
     pipeline.rexerr_version_retrieval(pipeline.test_data, topk=5)
     pipeline.rexerr_version_retrieval(pipeline.test_data, topk=10)
     pipeline.rexerr_version_retrieval(pipeline.test_data, topk=50)
+
+    # ordinary retrieval
+    pipeline.retrieval(topk=1)
+    pipeline.retrieval(topk=5)
+    pipeline.retrieval(topk=10)
+    pipeline.retrieval(topk=50)
 
 if __name__ == '__main__':
     main()

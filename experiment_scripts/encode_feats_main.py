@@ -44,7 +44,7 @@ def main():
     elif args.eval_dataset == 'rexerr':
         pipeline = RexErrEvaluationPipeline(args, is_study_level_sampling=args.is_study_level_sampling, err_level=args.error_level)
 
-    pipeline.encode_splits(train=True, val=True, test=True, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/fine_tune_rexerr/')
+    pipeline.encode_splits(train=False, val=False, test=True, pickle_dest='/cluster/projects/mcintoshgroup/publicData/fine-grain/cache/fine_tune_rexerr/')
 
 
 if __name__ == '__main__':
